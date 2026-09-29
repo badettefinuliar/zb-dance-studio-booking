@@ -84,20 +84,18 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
 
     <div id="status" class="status"></div>
     <div id="summary" class="summary">Your booking summary will appear here after an available slot is checked.</div>
-    <div class="footer-note">Availability is checked against confirmed bookings recorded on this website. Payment does not automatically confirm the booking until ZB Dance Studio acknowledges it.</div>
+    <div class="footer-note">When automatic booking is connected, available slots can be held for 30 minutes. After payment is verified, ZB Dance Studio changes the booking status to CONFIRMED in the private Google Sheet. Expired unpaid holds automatically stop blocking the schedule.</div>
   </div>
 </div>
 
 <script>
 const GCASH = "09062305755";
 
-/* Confirmed bookings go here.
-   Example:
-   {date:"2026-10-05", start:"13:00", end:"15:00"}
-*/
-const BOOKED_SLOTS = [];
-
+const API_URL = ""; // Paste Google Apps Script Web App /exec URL here when ready.
+const BOOKED_SLOTS = []; // fallback only until API_URL is connected
 let availabilityApproved = false;
+let bookingHoldCreated = false;
+let currentBookingId = "";
 
 function peso(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',minimumFractionDigits:2}).format(n).replace('PHP','₱')}
 function toMinutes(time){const [h,m]=time.split(':').map(Number);return h*60+m}
@@ -123,6 +121,8 @@ function calculate(){
 
 function resetAvailability(){
   availabilityApproved=false;
+  bookingHoldCreated=false;
+  currentBookingId="";
   document.getElementById('paymentBox').style.display='none';
   const box=document.getElementById('availability');
   box.className='availability';
@@ -130,65 +130,140 @@ function resetAvailability(){
   document.getElementById('summary').textContent='Your booking summary will appear here after an available slot is checked.';
 }
 
-function checkAvailability(){
+async function checkAvailability(){
   const date=document.getElementById('date').value;
   const start=document.getElementById('start').value;
-  const c=calculate();
+  const calc=calculate();
+  const end=String(Math.floor(calc.endMin/60)).padStart(2,'0')+':'+String(calc.endMin%60).padStart(2,'0');
   const box=document.getElementById('availability');
 
-  if(!date){
-    box.className='availability no';
-    box.textContent='Please choose a booking date first.';
-    return;
-  }
-
-  const today=new Date();
-  today.setHours(0,0,0,0);
+  if(!date){box.className='availability no';box.textContent='Please choose a booking date first.';return;}
+  const today=new Date();today.setHours(0,0,0,0);
   const chosen=new Date(date+'T00:00:00');
-  if(chosen<today){
-    box.className='availability no';
-    box.textContent='That date has already passed. Please choose another date.';
-    return;
-  }
+  if(chosen<today){box.className='availability no';box.textContent='That date has already passed. Please choose another date.';return;}
+  if(calc.startMin<8*60){box.className='availability no';box.textContent='Studio bookings start at 8:00 AM. Please choose a later time.';return;}
 
-  if(c.startMin<8*60){
-    box.className='availability no';
-    box.textContent='Studio bookings start at 8:00 AM. Please choose a later time.';
-    return;
-  }
+  box.className='availability';
+  box.textContent='Checking availability...';
 
-  const requestedStart=c.startMin;
-  const requestedEnd=c.endMin;
-  const conflict=BOOKED_SLOTS.some(slot=>{
-    if(slot.date!==date) return false;
-    const bookedStart=toMinutes(slot.start);
-    const bookedEnd=toMinutes(slot.end);
-    return requestedStart<bookedEnd && requestedEnd>bookedStart;
-  });
+  try{
+    if(API_URL){
+      const url=API_URL+'?action=check&date='+encodeURIComponent(date)+'&start='+encodeURIComponent(start)+'&end='+encodeURIComponent(end);
+      const res=await fetch(url);
+      const data=await res.json();
+      if(!data.ok) throw new Error(data.error||'Availability check failed.');
+      if(!data.available){
+        availabilityApproved=false;
+        bookingHoldCreated=false;
+        document.getElementById('paymentBox').style.display='none';
+        box.className='availability no';
+        box.textContent='Sorry, this schedule is already booked or temporarily held. Please choose another date or time.';
+        return;
+      }
+    }else{
+      const conflict=BOOKED_SLOTS.some(slot=>{
+        if(slot.date!==date) return false;
+        const bookedStart=toMinutes(slot.start), bookedEnd=toMinutes(slot.end);
+        return calc.startMin<bookedEnd && calc.endMin>bookedStart;
+      });
+      if(conflict){
+        availabilityApproved=false;
+        document.getElementById('paymentBox').style.display='none';
+        box.className='availability no';
+        box.textContent='Sorry, this schedule is already booked. Please choose another date or time.';
+        return;
+      }
+    }
 
-  if(conflict){
+    availabilityApproved=true;
+    bookingHoldCreated=false;
+    box.className='availability ok';
+    box.textContent=API_URL?'✓ Available now. Click “Hold This Slot” to lock it for 30 minutes.':'✓ Available! Automatic shared booking is not connected yet.';
+    document.getElementById('amountToSend').textContent='Reservation amount: '+peso(calc.reservation);
+    document.getElementById('paymentBox').style.display='block';
+    updateHoldButton_();
+  }catch(err){
     availabilityApproved=false;
     document.getElementById('paymentBox').style.display='none';
     box.className='availability no';
-    box.textContent='Sorry, this schedule is already booked. Please choose another date or time.';
+    box.textContent='Could not check live availability. Please try again.';
+  }
+}
+
+function updateHoldButton_(){
+  let btn=document.getElementById('holdButton');
+  if(!btn){
+    btn=document.createElement('button');
+    btn.id='holdButton';
+    btn.className='primary';
+    btn.onclick=createHold;
+    const box=document.getElementById('paymentBox');
+    box.insertBefore(btn, box.querySelector('.inline-actions'));
+  }
+  btn.textContent=API_URL?'Hold This Slot for 30 Minutes':'Automatic booking setup not connected';
+  btn.disabled=!API_URL || !availabilityApproved || bookingHoldCreated;
+}
+
+async function createHold(){
+  if(!API_URL || !availabilityApproved) return;
+  const name=document.getElementById('name').value.trim();
+  const contact=document.getElementById('contact').value.trim();
+  if(!name || !contact){
+    document.getElementById('status').textContent='Please enter your name and contact number first.';
     return;
   }
 
-  availabilityApproved=true;
-  box.className='availability ok';
-  box.textContent='✓ Available! You may proceed with the reservation fee below.';
-  document.getElementById('amountToSend').textContent='Reservation amount to send: '+peso(c.reservation);
-  document.getElementById('paymentBox').style.display='block';
+  const date=document.getElementById('date').value;
+  const start=document.getElementById('start').value;
+  const calc=calculate();
+  const end=String(Math.floor(calc.endMin/60)).padStart(2,'0')+':'+String(calc.endMin%60).padStart(2,'0');
+
+  document.getElementById('status').textContent='Holding your slot...';
+
+  try{
+    const res=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({
+        action:'reserve',
+        date,start,end,
+        name,contact,
+        purpose:document.getElementById('purpose').value,
+        total:calc.total,
+        reservation:calc.reservation,
+        balance:calc.balance
+      })
+    });
+    const data=await res.json();
+    if(!data.ok){
+      availabilityApproved=false;
+      document.getElementById('paymentBox').style.display='none';
+      document.getElementById('availability').className='availability no';
+      document.getElementById('availability').textContent=data.error||'This schedule is no longer available.';
+      return;
+    }
+    bookingHoldCreated=true;
+    currentBookingId=data.bookingId||'';
+    updateHoldButton_();
+    document.getElementById('status').textContent='Slot held for 30 minutes. Booking ID: '+currentBookingId;
+    document.getElementById('amountToSend').textContent='Send '+peso(calc.reservation)+' via GCash within 30 minutes. Booking ID: '+currentBookingId;
+  }catch(err){
+    document.getElementById('status').textContent='Could not create the temporary hold. Please try again.';
+  }
 }
 
 function makeSummary(){
-  if(!availabilityApproved){checkAvailability();if(!availabilityApproved)return;}
+  if(!availabilityApproved){checkAvailability();return;}
+  if(API_URL && !bookingHoldCreated){
+    document.getElementById('status').textContent='Please click “Hold This Slot” first.';
+    return;
+  }
   const c=calculate();
   const name=document.getElementById('name').value.trim()||'Guest';
   const contact=document.getElementById('contact').value.trim()||'Not provided';
   const date=document.getElementById('date').value||'Not selected';
   const purpose=document.getElementById('purpose').value;
-  const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+c.hours+' hour(s)\nPurpose: '+purpose+'\n\nAVAILABILITY: Checked - available at time of request\nStudio Fee: '+peso(c.total)+'\nReservation Fee (25%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: Ma Bernadette L Finuliar\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nFinal booking is subject to acknowledgement by ZB Dance Studio.';
+  const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+c.hours+' hour(s)\nPurpose: '+purpose+'\n\nBOOKING ID: '+(currentBookingId||'Not assigned')+'\nAVAILABILITY: Checked - available at time of request\nStudio Fee: '+peso(c.total)+'\nReservation Fee (25%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: Ma Bernadette L Finuliar\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nFinal booking is subject to acknowledgement by ZB Dance Studio.';
   document.getElementById('summary').textContent=text;
   document.getElementById('status').textContent='Booking summary generated.';
 }
