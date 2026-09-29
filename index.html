@@ -113,7 +113,15 @@ let bookingHoldCreated = false;
 let currentBookingId = "";
 
 function peso(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',minimumFractionDigits:2}).format(n).replace('PHP','₱')}
-function toMinutes(time){const [h,m]=time.split(':').map(Number);return h*60+m}
+function normalizeTimeValue(value,fallback){
+  if(typeof value==='string' && /^\d{2}:\d{2}$/.test(value)) return value;
+  return fallback;
+}
+function toMinutes(time){
+  const safe=normalizeTimeValue(String(time||''),'08:00');
+  const [h,m]=safe.split(':').map(Number);
+  return h*60+m;
+}
 function formatTime(totalMinutes){totalMinutes=((totalMinutes%1440)+1440)%1440;let h=Math.floor(totalMinutes/60);const m=totalMinutes%60;const ampm=h>=12?'PM':'AM';let display=h%12;if(display===0)display=12;return display+':'+String(m).padStart(2,'0')+' '+ampm}
 
 function updateBranding(){
@@ -184,7 +192,10 @@ async function checkAvailability(){
       const res=await fetch(url);
       const data=await res.json();
       if(!data.ok) throw new Error(data.error||'Availability check failed.');
-      if(data.settings){SETTINGS=data.settings;updateBranding();updateRateDisplay();calculate();}
+      if(data.settings){SETTINGS=data.settings;
+      SETTINGS.openingTime=normalizeTimeValue(SETTINGS.openingTime,'08:00');
+      SETTINGS.eveningStart=normalizeTimeValue(SETTINGS.eveningStart,'17:00');
+      updateBranding();updateRateDisplay();calculate();}
       if(!data.available){
         availabilityApproved=false;
         bookingHoldCreated=false;
@@ -315,6 +326,8 @@ async function loadSettings(){
     const data=await res.json();
     if(data.ok && data.settings){
       SETTINGS=data.settings;
+      SETTINGS.openingTime=normalizeTimeValue(SETTINGS.openingTime,'08:00');
+      SETTINGS.eveningStart=normalizeTimeValue(SETTINGS.eveningStart,'17:00');
       document.getElementById('start').value=SETTINGS.openingTime;
       updateBranding();
       updateRateDisplay();
