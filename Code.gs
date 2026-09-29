@@ -96,6 +96,12 @@ function setupSheets_() {
   if (!settings) settings = ss.insertSheet(SETTINGS_SHEET);
   if (settings.getLastRow() === 0) {
     settings.appendRow(['Setting','Value','Notes']);
+    settings.appendRow(['businessName','ZB Dance Studio','Business or studio name']);
+    settings.appendRow(['businessTagline','Practice • Classes • Training • Master Classes','Short line under business name']);
+    settings.appendRow(['locationLabel','Malolos, Bulacan','Location shown on the page']);
+    settings.appendRow(['gcashName','Ma Bernadette L Finuliar','GCash account name']);
+    settings.appendRow(['gcashNumber','09062305755','GCash mobile number']);
+    settings.appendRow(['creatorBrand','Badette AI Systems','Small footer credit']);
     settings.appendRow(['dayRate',350,'Rate per hour before evening rate starts']);
     settings.appendRow(['eveningRate',500,'Rate per hour from evening start time onward']);
     settings.appendRow(['reservationPercent',25,'Reservation fee percentage']);
@@ -111,6 +117,12 @@ function getSettings_() {
   const rows = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 2).getValues();
 
   const defaults = {
+    businessName: 'ZB Dance Studio',
+    businessTagline: 'Practice • Classes • Training • Master Classes',
+    locationLabel: 'Malolos, Bulacan',
+    gcashName: 'Ma Bernadette L Finuliar',
+    gcashNumber: '09062305755',
+    creatorBrand: 'Badette AI Systems',
     dayRate: 350,
     eveningRate: 500,
     reservationPercent: 25,
