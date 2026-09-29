@@ -140,6 +140,13 @@ function getSettings_() {
     if (['dayRate','eveningRate','reservationPercent','holdMinutes'].includes(key)) {
       value = Number(value);
       if (!isFinite(value)) return;
+    } else if (['openingTime','eveningStart'].includes(key)) {
+      if (value instanceof Date) {
+        value = Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+      } else {
+        value = String(value || '').trim();
+      }
+      if (!/^\d{2}:\d{2}$/.test(value)) return;
     } else {
       value = String(value);
     }
