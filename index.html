@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ZB Dance Studio Booking</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --card:#121a2b;
+    --card2:#182235;
+    --text:#f8fafc;
+    --muted:#b6c2d4;
+    --line:#31415a;
+    --accent:#f6b73c;
+    --accent2:#ffe29a;
+    --ok:#33d17a;
+    --danger:#ff7a7a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Inter,Arial,Helvetica,sans-serif;
+    background:
+      radial-gradient(circle at top right, rgba(246,183,60,.14), transparent 28%),
+      linear-gradient(135deg,#09101d,#111a2d 55%,#0d1423);
+    color:var(--text);
+    min-height:100vh;
+    padding:20px;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  .hero{padding:26px 18px 18px;text-align:center}
+  .hero h1{margin:0;font-size:clamp(30px,7vw,52px);letter-spacing:-1px}
+  .hero p{margin:8px 0 0;color:var(--muted)}
+  .badge{display:inline-block;margin-top:12px;padding:7px 12px;border-radius:999px;background:rgba(246,183,60,.12);border:1px solid rgba(246,183,60,.4);color:var(--accent2);font-weight:700;font-size:13px}
+  .card{background:rgba(18,26,43,.96);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+  .section-title{margin:0 0 14px;font-size:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-size:13px;margin-bottom:6px;color:var(--muted)}
+  input,select{width:100%;padding:12px 13px;border-radius:12px;border:1px solid #42516a;background:#0b1220;color:white;font-size:16px;outline:none}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(246,183,60,.11)}
+  .rates{margin:18px 0;padding:14px 16px;background:#0b1220;border:1px solid #28364c;border-radius:14px;color:var(--muted);line-height:1.6}
+  .rates strong{color:white}
+  .result{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:680px){.result{grid-template-columns:1fr}}
+  .metric{background:var(--card2);border:1px solid #2d3b52;border-radius:14px;padding:15px}
+  .metric small{display:block;color:var(--muted);margin-bottom:7px}
+  .metric b{font-size:22px}
+  .breakdown{margin-top:12px;padding:12px 14px;background:#0b1220;border-radius:12px;border:1px solid #28364c;color:var(--muted);line-height:1.5}
+  .payment-box{margin-top:18px;background:linear-gradient(145deg,#0c1527,#101c31);border:1px solid #345077;border-radius:16px;padding:17px}
+  .payment-box h3{margin:0 0 8px;font-size:18px}
+  .payment-box p{margin:5px 0;color:var(--muted)}
+  .gcash-number{font-size:23px;font-weight:800;letter-spacing:.6px;color:var(--accent2);margin:5px 0 10px}
+  .inline-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:800;cursor:pointer}
+  .primary{background:var(--accent);color:#151515}
+  .secondary{background:#33445f;color:white}
+  .ghost{background:#18263b;color:white;border:1px solid #38506d}
+  .proof{margin-top:14px;padding-top:14px;border-top:1px solid #2b3b54}
+  .proof input[type=file]{padding:10px;background:#0b1220}
+  .proof-note{font-size:12px;color:var(--muted);margin-top:7px}
+  .preview{margin-top:10px;max-width:180px;border-radius:12px;display:none;border:1px solid #3a4d69}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .summary{margin-top:18px;background:#0b1220;border-radius:14px;border:1px solid #28364c;padding:15px;white-space:pre-wrap;line-height:1.55;color:#e2e8f0}
+  .status{margin-top:10px;font-size:13px;color:var(--ok);min-height:18px}
+  .footer-note{color:var(--muted);font-size:12px;margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>ZB Dance Studio</h1>
+    <p>Practice • Classes • Training • Master Classes</p>
+    <span class="badge">Malolos, Bulacan</span>
+  </div>
+  <div class="card">
+    <h2 class="section-title">Booking Details</h2>
+    <div class="grid">
+      <div><label for="name">Customer name</label><input id="name" placeholder="Your name"></div>
+      <div><label for="contact">Contact number</label><input id="contact" placeholder="09xx xxx xxxx"></div>
+      <div><label for="date">Booking date</label><input id="date" type="date"></div>
+      <div><label for="start">Start time</label><input id="start" type="time" value="08:00"></div>
+      <div><label for="hours">Number of hours</label><input id="hours" type="number" min="1" max="12" step="1" value="1"></div>
+      <div><label for="purpose">Purpose</label><select id="purpose"><option>Dance practice</option><option>Dance class</option><option>School activity practice</option><option>Training</option><option>Master class</option><option>Other</option></select></div>
+    </div>
+    <div class="rates"><strong>Studio Rates</strong><br>8:00 AM–5:00 PM: ₱350/hour<br>5:00 PM onwards: ₱500/hour<br>Reservation fee: 25% of the total studio fee</div>
+    <div class="result">
+      <div class="metric"><small>Total Studio Fee</small><b id="total">₱350.00</b></div>
+      <div class="metric"><small>Reservation Fee</small><b id="reservation">₱87.50</b></div>
+      <div class="metric"><small>Remaining Balance</small><b id="balance">₱262.50</b></div>
+    </div>
+    <div id="breakdown" class="breakdown">Booking time: 8:00 AM–9:00 AM • Day rate: 1 hr × ₱350</div>
+    <div class="payment-box">
+      <h3>Pay Reservation Fee via GCash</h3>
+      <p>GCash Name: <strong>Ma Bernadette L Finuliar</strong></p>
+      <p>GCash Number:</p>
+      <div class="gcash-number">09062305755</div>
+      <div class="inline-actions"><button class="ghost" onclick="copyGCash()">Copy GCash Number</button><button class="ghost" onclick="copyAmount()">Copy Reservation Amount</button></div>
+      <div class="proof"><label for="proof">Optional: attach payment screenshot for your own reference</label><input id="proof" type="file" accept="image/*"><div class="proof-note">This preview stays only on this device/page and is not uploaded anywhere.</div><img id="preview" class="preview" alt="Payment screenshot preview"></div>
+    </div>
+    <div class="actions"><button class="primary" onclick="makeSummary()">Generate Booking Summary</button><button class="secondary" onclick="copySummary()">Copy Booking Summary</button></div>
+    <div id="status" class="status"></div>
+    <div id="summary" class="summary">Fill out the form, then click “Generate Booking Summary.”</div>
+    <div class="footer-note">Booking is subject to schedule confirmation. Payment of the reservation fee does not automatically confirm the slot until ZB Dance Studio acknowledges the booking.</div>
+  </div>
+</div>
+<script>
+const GCASH = "09062305755";
+function peso(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',minimumFractionDigits:2}).format(n).replace('PHP','₱')}
+function toMinutes(time){const [h,m]=time.split(':').map(Number);return h*60+m}
+function formatTime(totalMinutes){totalMinutes=((totalMinutes%1440)+1440)%1440;let h=Math.floor(totalMinutes/60);const m=totalMinutes%60;const ampm=h>=12?'PM':'AM';let display=h%12;if(display===0)display=12;return display+':'+String(m).padStart(2,'0')+' '+ampm}
+function calculate(){const start=document.getElementById('start').value||'08:00';const hours=Math.max(1,Math.min(12,Number(document.getElementById('hours').value||1)));const startMin=toMinutes(start);let dayHours=0,eveningHours=0;for(let i=0;i<hours;i++){const segmentStart=startMin+i*60;if(segmentStart>=17*60)eveningHours++;else dayHours++}const total=dayHours*350+eveningHours*500;const reservation=total*.25;const balance=total-reservation;const endMin=startMin+hours*60;document.getElementById('total').textContent=peso(total);document.getElementById('reservation').textContent=peso(reservation);document.getElementById('balance').textContent=peso(balance);const parts=[];if(dayHours)parts.push('Day rate: '+dayHours+' hr × ₱350');if(eveningHours)parts.push('Evening rate: '+eveningHours+' hr × ₱500');document.getElementById('breakdown').textContent='Booking time: '+formatTime(startMin)+'–'+formatTime(endMin)+' • '+parts.join(' • ');return{total,reservation,balance,startMin,endMin,dayHours,eveningHours}}
+function makeSummary(){const c=calculate();const name=document.getElementById('name').value.trim()||'Guest';const contact=document.getElementById('contact').value.trim()||'Not provided';const date=document.getElementById('date').value||'Not selected';const hours=Number(document.getElementById('hours').value||1);const purpose=document.getElementById('purpose').value;const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+hours+' hour(s)\nPurpose: '+purpose+'\n\nStudio Fee: '+peso(c.total)+'\nReservation Fee (25%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: Ma Bernadette L Finuliar\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nBooking is subject to schedule confirmation by ZB Dance Studio.';document.getElementById('summary').textContent=text;document.getElementById('status').textContent='Booking summary generated.'}
+async function copyText(text,success){try{await navigator.clipboard.writeText(text);document.getElementById('status').textContent=success}catch(e){document.getElementById('status').textContent='Copy failed. Please copy it manually.'}}
+function copySummary(){makeSummary();copyText(document.getElementById('summary').textContent,'Booking summary copied.')}
+function copyGCash(){copyText(GCASH,'GCash number copied.')}
+function copyAmount(){const c=calculate();copyText(c.reservation.toFixed(2),'Reservation amount copied.')}
+['start','hours'].forEach(id=>document.getElementById(id).addEventListener('input',calculate));
+document.getElementById('proof').addEventListener('change',e=>{const file=e.target.files[0];const img=document.getElementById('preview');if(!file){img.style.display='none';img.removeAttribute('src');return}img.src=URL.createObjectURL(file);img.style.display='block'});
+calculate();
+</script>
+</body>
+</html>
