@@ -93,6 +93,14 @@ const GCASH = "09062305755";
 
 const API_URL = ""; // Paste Google Apps Script Web App /exec URL here when ready.
 const BOOKED_SLOTS = []; // fallback only until API_URL is connected
+let SETTINGS = {
+  dayRate: 350,
+  eveningRate: 500,
+  reservationPercent: 25,
+  openingTime: "08:00",
+  eveningStart: "17:00",
+  holdMinutes: 30
+};
 let availabilityApproved = false;
 let bookingHoldCreated = false;
 let currentBookingId = "";
@@ -101,20 +109,26 @@ function peso(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency
 function toMinutes(time){const [h,m]=time.split(':').map(Number);return h*60+m}
 function formatTime(totalMinutes){totalMinutes=((totalMinutes%1440)+1440)%1440;let h=Math.floor(totalMinutes/60);const m=totalMinutes%60;const ampm=h>=12?'PM':'AM';let display=h%12;if(display===0)display=12;return display+':'+String(m).padStart(2,'0')+' '+ampm}
 
+function updateRateDisplay(){
+  const ratesBox=document.querySelector('.rates');
+  ratesBox.innerHTML='<strong>Studio Rates</strong><br>'+formatTime(toMinutes(SETTINGS.openingTime))+'–'+formatTime(toMinutes(SETTINGS.eveningStart))+': '+peso(Number(SETTINGS.dayRate))+'/hour<br>'+formatTime(toMinutes(SETTINGS.eveningStart))+' onwards: '+peso(Number(SETTINGS.eveningRate))+'/hour<br>Reservation fee: '+Number(SETTINGS.reservationPercent)+'% of the total studio fee';
+}
+
 function calculate(){
-  const start=document.getElementById('start').value||'08:00';
+  const start=document.getElementById('start').value||SETTINGS.openingTime;
   const hours=Math.max(1,Math.min(12,Number(document.getElementById('hours').value||1)));
   const startMin=toMinutes(start);
+  const eveningStartMin=toMinutes(SETTINGS.eveningStart);
   let dayHours=0,eveningHours=0;
-  for(let i=0;i<hours;i++){const segmentStart=startMin+i*60;if(segmentStart>=17*60)eveningHours++;else dayHours++}
-  const total=dayHours*350+eveningHours*500;
-  const reservation=total*.25;
+  for(let i=0;i<hours;i++){const segmentStart=startMin+i*60;if(segmentStart>=eveningStartMin)eveningHours++;else dayHours++}
+  const total=dayHours*Number(SETTINGS.dayRate)+eveningHours*Number(SETTINGS.eveningRate);
+  const reservation=total*(Number(SETTINGS.reservationPercent)/100);
   const balance=total-reservation;
   const endMin=startMin+hours*60;
   document.getElementById('total').textContent=peso(total);
   document.getElementById('reservation').textContent=peso(reservation);
   document.getElementById('balance').textContent=peso(balance);
-  const parts=[];if(dayHours)parts.push('Day rate: '+dayHours+' hr × ₱350');if(eveningHours)parts.push('Evening rate: '+eveningHours+' hr × ₱500');
+  const parts=[];if(dayHours)parts.push('Day rate: '+dayHours+' hr × '+peso(Number(SETTINGS.dayRate)));if(eveningHours)parts.push('Evening rate: '+eveningHours+' hr × '+peso(Number(SETTINGS.eveningRate)));
   document.getElementById('breakdown').textContent='Booking time: '+formatTime(startMin)+'–'+formatTime(endMin)+' • '+parts.join(' • ');
   return{total,reservation,balance,startMin,endMin,hours};
 }
@@ -141,7 +155,7 @@ async function checkAvailability(){
   const today=new Date();today.setHours(0,0,0,0);
   const chosen=new Date(date+'T00:00:00');
   if(chosen<today){box.className='availability no';box.textContent='That date has already passed. Please choose another date.';return;}
-  if(calc.startMin<8*60){box.className='availability no';box.textContent='Studio bookings start at 8:00 AM. Please choose a later time.';return;}
+  if(calc.startMin<toMinutes(SETTINGS.openingTime)){box.className='availability no';box.textContent='Studio bookings start at '+formatTime(toMinutes(SETTINGS.openingTime))+'. Please choose a later time.';return;}
 
   box.className='availability';
   box.textContent='Checking availability...';
@@ -152,6 +166,7 @@ async function checkAvailability(){
       const res=await fetch(url);
       const data=await res.json();
       if(!data.ok) throw new Error(data.error||'Availability check failed.');
+      if(data.settings){SETTINGS=data.settings;updateRateDisplay();calculate();}
       if(!data.available){
         availabilityApproved=false;
         bookingHoldCreated=false;
@@ -200,7 +215,7 @@ function updateHoldButton_(){
     const box=document.getElementById('paymentBox');
     box.insertBefore(btn, box.querySelector('.inline-actions'));
   }
-  btn.textContent=API_URL?'Hold This Slot for 30 Minutes':'Automatic booking setup not connected';
+  btn.textContent=API_URL?'Hold This Slot for '+SETTINGS.holdMinutes+' Minutes':'Automatic booking setup not connected';
   btn.disabled=!API_URL || !availabilityApproved || bookingHoldCreated;
 }
 
@@ -245,8 +260,8 @@ async function createHold(){
     bookingHoldCreated=true;
     currentBookingId=data.bookingId||'';
     updateHoldButton_();
-    document.getElementById('status').textContent='Slot held for 30 minutes. Booking ID: '+currentBookingId;
-    document.getElementById('amountToSend').textContent='Send '+peso(calc.reservation)+' via GCash within 30 minutes. Booking ID: '+currentBookingId;
+    document.getElementById('status').textContent='Slot held for '+(data.holdMinutes||SETTINGS.holdMinutes)+' minutes. Booking ID: '+currentBookingId;
+    document.getElementById('amountToSend').textContent='Send '+peso(calc.reservation)+' via GCash within '+(data.holdMinutes||SETTINGS.holdMinutes)+' minutes. Booking ID: '+currentBookingId;
   }catch(err){
     document.getElementById('status').textContent='Could not create the temporary hold. Please try again.';
   }
@@ -263,7 +278,7 @@ function makeSummary(){
   const contact=document.getElementById('contact').value.trim()||'Not provided';
   const date=document.getElementById('date').value||'Not selected';
   const purpose=document.getElementById('purpose').value;
-  const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+c.hours+' hour(s)\nPurpose: '+purpose+'\n\nBOOKING ID: '+(currentBookingId||'Not assigned')+'\nAVAILABILITY: Checked - available at time of request\nStudio Fee: '+peso(c.total)+'\nReservation Fee (25%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: Ma Bernadette L Finuliar\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nFinal booking is subject to acknowledgement by ZB Dance Studio.';
+  const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+c.hours+' hour(s)\nPurpose: '+purpose+'\n\nBOOKING ID: '+(currentBookingId||'Not assigned')+'\nAVAILABILITY: Checked - available at time of request\nStudio Fee: '+peso(c.total)+'\nReservation Fee ('+Number(SETTINGS.reservationPercent)+'%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: Ma Bernadette L Finuliar\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nFinal booking is subject to acknowledgement by ZB Dance Studio.';
   document.getElementById('summary').textContent=text;
   document.getElementById('status').textContent='Booking summary generated.';
 }
@@ -275,7 +290,23 @@ function copyAmount(){const c=calculate();copyText(c.reservation.toFixed(2),'Res
 
 ['date','start','hours'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{calculate();resetAvailability()}));
 document.getElementById('proof').addEventListener('change',e=>{const file=e.target.files[0];const img=document.getElementById('preview');if(!file){img.style.display='none';img.removeAttribute('src');return}img.src=URL.createObjectURL(file);img.style.display='block'});
-calculate();
+async function loadSettings(){
+  if(!API_URL){updateRateDisplay();calculate();return;}
+  try{
+    const res=await fetch(API_URL+'?action=settings');
+    const data=await res.json();
+    if(data.ok && data.settings){
+      SETTINGS=data.settings;
+      document.getElementById('start').value=SETTINGS.openingTime;
+      updateRateDisplay();
+      calculate();
+    }
+  }catch(e){
+    updateRateDisplay();
+    calculate();
+  }
+}
+loadSettings();
 </script>
 </body>
 </html>
