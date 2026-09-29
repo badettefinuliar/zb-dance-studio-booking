@@ -22,15 +22,15 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
 .availability.ok{border-color:rgba(51,209,122,.5);color:#b9f6d1}.availability.no{border-color:rgba(255,122,122,.5);color:#ffd0d0}.payment-box{display:none;margin-top:18px;background:linear-gradient(145deg,#0c1527,#101c31);border:1px solid #345077;border-radius:16px;padding:17px}
 .payment-box h3{margin:0 0 8px;font-size:18px}.payment-box p{margin:5px 0;color:var(--muted)}.gcash-number{font-size:23px;font-weight:800;letter-spacing:.6px;color:var(--accent2);margin:5px 0 10px}
 .proof{margin-top:14px;padding-top:14px;border-top:1px solid #2b3b54}.proof input[type=file]{padding:10px;background:#0b1220}.proof-note{font-size:12px;color:var(--muted);margin-top:7px}.preview{margin-top:10px;max-width:180px;border-radius:12px;display:none;border:1px solid #3a4d69}
-.summary{white-space:pre-wrap;color:#e2e8f0}.status{margin-top:10px;font-size:13px;color:var(--ok);min-height:18px}.footer-note{color:var(--muted);font-size:12px;margin-top:14px;line-height:1.5}.hidden{display:none}
+.summary{white-space:pre-wrap;color:#e2e8f0}.status{margin-top:10px;font-size:13px;color:var(--ok);min-height:18px}.creator-credit{text-align:center;color:#718096;font-size:11px;margin-top:18px;letter-spacing:.2px}.footer-note{color:var(--muted);font-size:12px;margin-top:14px;line-height:1.5}.hidden{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>ZB Dance Studio</h1>
-    <p>Practice • Classes • Training • Master Classes</p>
-    <span class="badge">Malolos, Bulacan</span>
+    <h1 id="businessName">ZB Dance Studio</h1>
+    <p id="businessTagline">Practice • Classes • Training • Master Classes</p>
+    <span class="badge" id="locationLabel">Malolos, Bulacan</span>
   </div>
 
   <div class="card">
@@ -62,9 +62,9 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
     <div id="paymentBox" class="payment-box">
       <h2 class="section-title">2. Reserve the Available Slot</h2>
       <h3>Pay Reservation Fee via GCash</h3>
-      <p>GCash Name: <strong>Ma Bernadette L Finuliar</strong></p>
+      <p>GCash Name: <strong id="gcashName">Ma Bernadette L Finuliar</strong></p>
       <p>GCash Number:</p>
-      <div class="gcash-number">09062305755</div>
+      <div class="gcash-number" id="gcashNumber">09062305755</div>
       <p id="amountToSend"></p>
       <div class="inline-actions">
         <button class="ghost" onclick="copyGCash()">Copy GCash Number</button>
@@ -84,16 +84,23 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
 
     <div id="status" class="status"></div>
     <div id="summary" class="summary">Your booking summary will appear here after an available slot is checked.</div>
-    <div class="footer-note">When automatic booking is connected, available slots can be held for 30 minutes. After payment is verified, ZB Dance Studio changes the booking status to CONFIRMED in the private Google Sheet. Expired unpaid holds automatically stop blocking the schedule.</div>
+    <div class="footer-note">When automatic booking is connected, available slots can be held temporarily. After payment is verified, the business changes the booking status to CONFIRMED in the private Google Sheet. Expired unpaid holds automatically stop blocking the schedule.</div>
+    <div class="creator-credit" id="creatorCredit">Powered by Badette AI Systems</div>
   </div>
 </div>
 
 <script>
-const GCASH = "09062305755";
+let GCASH = "09062305755";
 
 const API_URL = ""; // Paste Google Apps Script Web App /exec URL here when ready.
 const BOOKED_SLOTS = []; // fallback only until API_URL is connected
 let SETTINGS = {
+  businessName: "ZB Dance Studio",
+  businessTagline: "Practice • Classes • Training • Master Classes",
+  locationLabel: "Malolos, Bulacan",
+  gcashName: "Ma Bernadette L Finuliar",
+  gcashNumber: "09062305755",
+  creatorBrand: "Badette AI Systems",
   dayRate: 350,
   eveningRate: 500,
   reservationPercent: 25,
@@ -108,6 +115,17 @@ let currentBookingId = "";
 function peso(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',minimumFractionDigits:2}).format(n).replace('PHP','₱')}
 function toMinutes(time){const [h,m]=time.split(':').map(Number);return h*60+m}
 function formatTime(totalMinutes){totalMinutes=((totalMinutes%1440)+1440)%1440;let h=Math.floor(totalMinutes/60);const m=totalMinutes%60;const ampm=h>=12?'PM':'AM';let display=h%12;if(display===0)display=12;return display+':'+String(m).padStart(2,'0')+' '+ampm}
+
+function updateBranding(){
+  document.title=(SETTINGS.businessName||'Booking')+' Booking';
+  document.getElementById('businessName').textContent=SETTINGS.businessName||'Business Booking';
+  document.getElementById('businessTagline').textContent=SETTINGS.businessTagline||'';
+  document.getElementById('locationLabel').textContent=SETTINGS.locationLabel||'';
+  document.getElementById('gcashName').textContent=SETTINGS.gcashName||'';
+  document.getElementById('gcashNumber').textContent=SETTINGS.gcashNumber||'';
+  document.getElementById('creatorCredit').textContent='Powered by '+(SETTINGS.creatorBrand||'Badette AI Systems');
+  GCASH=String(SETTINGS.gcashNumber||'');
+}
 
 function updateRateDisplay(){
   const ratesBox=document.querySelector('.rates');
@@ -166,7 +184,7 @@ async function checkAvailability(){
       const res=await fetch(url);
       const data=await res.json();
       if(!data.ok) throw new Error(data.error||'Availability check failed.');
-      if(data.settings){SETTINGS=data.settings;updateRateDisplay();calculate();}
+      if(data.settings){SETTINGS=data.settings;updateBranding();updateRateDisplay();calculate();}
       if(!data.available){
         availabilityApproved=false;
         bookingHoldCreated=false;
@@ -278,7 +296,7 @@ function makeSummary(){
   const contact=document.getElementById('contact').value.trim()||'Not provided';
   const date=document.getElementById('date').value||'Not selected';
   const purpose=document.getElementById('purpose').value;
-  const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+c.hours+' hour(s)\nPurpose: '+purpose+'\n\nBOOKING ID: '+(currentBookingId||'Not assigned')+'\nAVAILABILITY: Checked - available at time of request\nStudio Fee: '+peso(c.total)+'\nReservation Fee ('+Number(SETTINGS.reservationPercent)+'%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: Ma Bernadette L Finuliar\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nFinal booking is subject to acknowledgement by ZB Dance Studio.';
+  const text='ZB DANCE STUDIO BOOKING REQUEST\n\nName: '+name+'\nContact: '+contact+'\nDate: '+date+'\nTime: '+formatTime(c.startMin)+'–'+formatTime(c.endMin)+'\nDuration: '+c.hours+' hour(s)\nPurpose: '+purpose+'\n\nBOOKING ID: '+(currentBookingId||'Not assigned')+'\nAVAILABILITY: Checked - available at time of request\nStudio Fee: '+peso(c.total)+'\nReservation Fee ('+Number(SETTINGS.reservationPercent)+'%): '+peso(c.reservation)+'\nRemaining Balance: '+peso(c.balance)+'\n\nGCash Payment Details\nName: '+SETTINGS.gcashName+'\nNumber: '+GCASH+'\nAmount to Send: '+peso(c.reservation)+'\n\nPlease keep your payment screenshot for confirmation.\nFinal booking is subject to acknowledgement by ZB Dance Studio.';
   document.getElementById('summary').textContent=text;
   document.getElementById('status').textContent='Booking summary generated.';
 }
@@ -291,17 +309,19 @@ function copyAmount(){const c=calculate();copyText(c.reservation.toFixed(2),'Res
 ['date','start','hours'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{calculate();resetAvailability()}));
 document.getElementById('proof').addEventListener('change',e=>{const file=e.target.files[0];const img=document.getElementById('preview');if(!file){img.style.display='none';img.removeAttribute('src');return}img.src=URL.createObjectURL(file);img.style.display='block'});
 async function loadSettings(){
-  if(!API_URL){updateRateDisplay();calculate();return;}
+  if(!API_URL){updateBranding();updateRateDisplay();calculate();return;}
   try{
     const res=await fetch(API_URL+'?action=settings');
     const data=await res.json();
     if(data.ok && data.settings){
       SETTINGS=data.settings;
       document.getElementById('start').value=SETTINGS.openingTime;
+      updateBranding();
       updateRateDisplay();
       calculate();
     }
   }catch(e){
+    updateBranding();
     updateRateDisplay();
     calculate();
   }
