@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
 <div class="wrap">
   <div class="hero">
     <h1>BTC/PHP Strategy Lab v2</h1>
-    <p>Longer-history research + walk-forward testing. No live order execution.</p>
+    <p>Detailed-history research + walk-forward testing. No live order execution.</p>
   </div>
 
   <div class="grid">
@@ -40,7 +40,7 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
         <button class="secondary" onclick="runDemo()">Run Demo</button>
       </div>
       <div id="status" class="status"></div>
-      <div class="note">The selected period is split 70% training / 30% out-of-sample. The out-of-sample section is the more important reality check.</div>
+      <div class="note">The selected period is loaded in shorter chunks to preserve more detailed price history, then split 70% training / 30% out-of-sample.</div>
     </div>
 
     <div class="card">
@@ -107,19 +107,42 @@ const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{maximumFractionDigits:2});
 function setStatus(t){document.getElementById('status').textContent=t}
 
 async function loadMarket(){
-  setStatus('Loading '+days+' days of BTC/PHP history...');
+  setStatus('Loading detailed '+days+'-day BTC/PHP history in chunks...');
   try{
-    const u='https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=php&days='+days;
-    const r=await fetch(u,{cache:'no-store'});
-    if(!r.ok)throw new Error('market source blocked');
-    const j=await r.json();
-    if(!j.prices||j.prices.length<100)throw new Error('not enough history');
-    marketData=j.prices.map(x=>({time:x[0],close:Number(x[1])}));
+    const now=Math.floor(Date.now()/1000);
+    const start=now-days*86400;
+    const chunkSeconds=80*86400;
+    let all=[];
+    let from=start;
+    let part=1;
+    const totalParts=Math.ceil((now-start)/chunkSeconds);
+
+    while(from<now){
+      const to=Math.min(from+chunkSeconds,now);
+      setStatus('Loading market data chunk '+part+' of '+totalParts+'...');
+      const u='https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=php&from='+from+'&to='+to;
+      const r=await fetch(u,{cache:'no-store'});
+      if(!r.ok)throw new Error('market source blocked');
+      const j=await r.json();
+      if(!j.prices||!j.prices.length)throw new Error('empty history chunk');
+      all=all.concat(j.prices);
+      from=to+1;
+      part++;
+      await new Promise(resolve=>setTimeout(resolve,350));
+    }
+
+    const seen=new Map();
+    all.forEach(x=>seen.set(Number(x[0]),Number(x[1])));
+    marketData=[...seen.entries()]
+      .sort((a,b)=>a[0]-b[0])
+      .map(x=>({time:x[0],close:x[1]}));
+
+    if(marketData.length<300)throw new Error('not enough detailed history');
     updateSummary();
     runLab();
-    setStatus('Loaded '+marketData.length+' BTC/PHP price points for '+days+' days.');
+    setStatus('Loaded '+marketData.length+' detailed BTC/PHP price points across '+days+' days.');
   }catch(e){
-    setStatus('Market source was blocked. Use Run Demo for now.');
+    setStatus('Detailed history could not be loaded. Try again shortly, or use a shorter period.');
   }
 }
 
