@@ -1,0 +1,30 @@
+name: Paper Trading Bot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/paper-bot.yml"
+      - "trading-bot/paper_bot.py"
+  schedule:
+    - cron: "25 */4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run paper bot
+        run: python trading-bot/paper_bot.py
+      - name: Commit paper state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trading-bot/data/paper-state.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update paper trading state"
+          git push
