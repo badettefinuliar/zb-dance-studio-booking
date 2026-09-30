@@ -38,7 +38,7 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
     <div class="grid">
       <div><label for="name">Customer name</label><input id="name" placeholder="Your name"></div>
       <div><label for="contact">Contact number</label><input id="contact" placeholder="09xx xxx xxxx"></div>
-      <div><label for="date">Booking date</label><input id="date" type="date"></div>
+      <div><label for="date">Booking date</label><input id="date" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" autocomplete="off"></div>
       <div><label for="start">Start time</label><input id="start" type="time" value="08:00"></div>
       <div><label for="hours">Number of hours</label><input id="hours" type="number" min="1" max="12" step="1" value="1"></div>
       <div><label for="purpose">Purpose</label><select id="purpose"><option>Dance practice</option><option>Dance class</option><option>School activity practice</option><option>Training</option><option>Master class</option><option>Other</option></select></div>
