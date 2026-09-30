@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC/PHP Strategy Lab v4</title>
+<title>BTC/PHP Strategy Lab v5</title>
 <style>
 :root{--bg:#07111f;--card:#0f1d30;--line:#263b58;--text:#eef6ff;--muted:#9eb0c8;--green:#55d6a2;--yellow:#ffd166;--red:#ff7b7b;--blue:#77a7ff}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#06101b,#0b1728);color:var(--text);font-family:Inter,system-ui,Arial;padding:18px}
@@ -23,8 +23,8 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>BTC/PHP Strategy Lab v4</h1>
-    <p>Trend-entry research + walk-forward testing + benchmark. No live order execution.</p>
+    <h1>BTC/PHP Strategy Lab v5</h1>
+    <p>Multi-strategy research + walk-forward testing + benchmark. No live order execution.</p>
   </div>
 
   <div class="grid">
@@ -72,14 +72,14 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
   </div>
 
   <div class="card">
-    <h2>Walk-Forward Results</h2>
+    <h2>Walk-Forward Results — Multiple Strategy Families</h2>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Rank</th><th>EMA</th><th>RSI</th><th>SL / TP</th>
+            <th>Rank</th><th>Family</th><th>Setup</th>
             <th>Train Return</th><th>Train DD</th><th>Train Trades</th>
-            <th>OOS Return</th><th>OOS DD</th><th>OOS Win Rate</th><th>OOS Trades</th><th>OOS Profit Factor</th><th>Sample Check</th>
+            <th>OOS Return</th><th>OOS DD</th><th>OOS Win Rate</th><th>OOS Trades</th><th>OOS Profit Factor</th><th>vs Hold</th><th>Sample Check</th>
           </tr>
         </thead>
         <tbody id="lab"><tr><td colspan="13" style="text-align:center;color:#72859d">Load data, then run Walk-Forward Lab.</td></tr></tbody>
@@ -90,7 +90,7 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
   <div class="card">
     <h2>How to Read This</h2>
     <div class="note">
-      A strategy can look strong in training and fail out-of-sample. We are looking for positive or near-flat out-of-sample return, controlled drawdown, profit factor above 1.0, and ideally 10+ out-of-sample trades. Compare each strategy against the OOS Buy & Hold benchmark too.
+      We now compare three genuinely different strategy families. A useful candidate should stay stable out-of-sample, keep drawdown controlled, show profit factor above 1.0, have a reasonable trade count, and ideally beat the same-period Buy & Hold benchmark.
     </div>
   </div>
 </div>
@@ -165,6 +165,102 @@ function updateSummary(){
   document.getElementById('price').textContent=marketData.length?peso(marketData[marketData.length-1].close):'₱—';
 }
 
+
+function sma(v,p){
+  const o=Array(v.length).fill(null); let s=0;
+  for(let i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p}
+  return o;
+}
+function atrLike(close,p=14){
+  const o=Array(close.length).fill(null), tr=Array(close.length).fill(0);
+  for(let i=1;i<close.length;i++) tr[i]=Math.abs(close[i]-close[i-1]);
+  let s=0;
+  for(let i=0;i<tr.length;i++){s+=tr[i];if(i>=p)s-=tr[i-p];if(i>=p-1)o[i]=s/p}
+  return o;
+}
+function highest(v,p,i){let m=-Infinity;for(let k=Math.max(0,i-p);k<i;k++)m=Math.max(m,v[k]);return m}
+function lowest(v,p,i){let m=Infinity;for(let k=Math.max(0,i-p);k<i;k++)m=Math.min(m,v[k]);return m}
+
+function simulateFamily(data,cfg){
+  const start=Number(document.getElementById('balance').value)||100000;
+  const fee=(Number(document.getElementById('fee').value)||0.10)/100;
+  const slip=(Number(document.getElementById('slip').value)||0.05)/100;
+  const close=data.map(d=>d.close), rr=rsi(close,14), e20=ema(close,20), e50=ema(close,50), e200=ema(close,200), at=atrLike(close,14);
+  let bal=start,pos=null,trades=0,wins=0,grossWin=0,grossLoss=0,peak=start,maxDD=0,lastExit=-9999;
+  const cooldown=8;
+  const warm=210;
+
+  for(let i=warm;i<data.length;i++){
+    const px=close[i];
+
+    if(pos){
+      const exitPx=px*(1-slip);
+      const move=(exitPx-pos.entry)/pos.entry;
+      let exit=false;
+
+      if(cfg.family==='Trend Pullback'){
+        if(move<=-cfg.sl || move>=cfg.tp || close[i]<e50[i]) exit=true;
+      } else if(cfg.family==='Breakout ATR'){
+        const atrPct=at[i] ? at[i]/px : 0;
+        if(move<=-(cfg.atrSL*atrPct) || move>=(cfg.atrTP*atrPct) || close[i]<e20[i]) exit=true;
+      } else if(cfg.family==='Mean Reversion'){
+        if(move<=-cfg.sl || move>=cfg.tp || rr[i]>=cfg.rsiExit || close[i]>e20[i]) exit=true;
+      }
+
+      if(exit){
+        const gross=bal*move;
+        const fees=(bal*fee)+(bal*(1+move)*fee);
+        const pnl=gross-fees;
+        bal+=pnl;trades++;
+        if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
+        pos=null;lastExit=i;
+      }
+    }
+
+    if(!pos && i-lastExit>=cooldown){
+      let enter=false;
+      if(cfg.family==='Trend Pullback'){
+        const longTrend=e50[i]>e200[i] && close[i]>e200[i];
+        const pullback=close[i]<=e20[i]*1.01 && close[i]>=e50[i]*0.98;
+        const rsiOk=rr[i]>=cfg.rsiMin && rr[i]<=cfg.rsiMax;
+        const rebound=close[i]>close[i-1];
+        enter=longTrend && pullback && rsiOk && rebound;
+      } else if(cfg.family==='Breakout ATR'){
+        const longTrend=close[i]>e50[i] && e50[i]>e200[i];
+        const breakout=close[i]>highest(close,cfg.lookback,i);
+        const atrOk=at[i] && at[i]/close[i]>=cfg.minAtrPct;
+        enter=longTrend && breakout && atrOk;
+      } else if(cfg.family==='Mean Reversion'){
+        const trendOk=close[i]>e200[i]*0.92;
+        const oversold=rr[i]<=cfg.rsiEntry;
+        const dip=close[i]<e20[i]*(1-cfg.dipPct);
+        const bounce=close[i]>close[i-1];
+        enter=trendOk && oversold && dip && bounce;
+      }
+      if(enter) pos={entry:px*(1+slip)};
+    }
+
+    peak=Math.max(peak,bal);
+    if(peak>0) maxDD=Math.max(maxDD,(peak-bal)/peak);
+  }
+
+  if(pos){
+    const px=close[close.length-1]*(1-slip), move=(px-pos.entry)/pos.entry;
+    const gross=bal*move, fees=(bal*fee)+(bal*(1+move)*fee), pnl=gross-fees;
+    bal+=pnl;trades++;
+    if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
+    peak=Math.max(peak,bal); if(peak>0) maxDD=Math.max(maxDD,(peak-bal)/peak);
+  }
+
+  return {
+    ret:(bal-start)/start*100,
+    dd:maxDD*100,
+    winRate:trades?wins/trades*100:0,
+    trades,
+    pf:grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0)
+  };
+}
+
 function simulate(data,cfg){
   const start=Number(document.getElementById('balance').value)||100000;
   const fee=(Number(document.getElementById('fee').value)||0.10)/100;
@@ -235,22 +331,23 @@ function runLab(){
   const train=marketData.slice(0,cut),test=marketData.slice(cut);
 
   const configs=[
-    {fast:9,slow:21,rsiMin:50,rsiMax:70,sl:1.5,tp:3},
-    {fast:9,slow:21,rsiMin:45,rsiMax:65,sl:1.5,tp:3},
-    {fast:12,slow:26,rsiMin:50,rsiMax:70,sl:1.5,tp:3},
-    {fast:12,slow:26,rsiMin:45,rsiMax:65,sl:2,tp:4},
-    {fast:20,slow:50,rsiMin:50,rsiMax:70,sl:2,tp:4},
-    {fast:20,slow:50,rsiMin:45,rsiMax:65,sl:1.5,tp:3},
-    {fast:8,slow:21,rsiMin:52,rsiMax:68,sl:1,tp:2},
-    {fast:10,slow:30,rsiMin:48,rsiMax:68,sl:2,tp:3.5},
-    {fast:15,slow:40,rsiMin:50,rsiMax:65,sl:1.5,tp:3},
-    {fast:21,slow:55,rsiMin:50,rsiMax:68,sl:2.5,tp:5}
+    {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 45–60',rsiMin:45,rsiMax:60,sl:0.025,tp:0.05},
+    {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 40–58',rsiMin:40,rsiMax:58,sl:0.03,tp:0.06},
+    {family:'Trend Pullback',label:'EMA50>200, shallow pullback, RSI 50–65',rsiMin:50,rsiMax:65,sl:0.02,tp:0.04},
+
+    {family:'Breakout ATR',label:'20-bar breakout, ATR 1.5x / 3x',lookback:20,minAtrPct:0.0015,atrSL:1.5,atrTP:3},
+    {family:'Breakout ATR',label:'30-bar breakout, ATR 2x / 4x',lookback:30,minAtrPct:0.0015,atrSL:2,atrTP:4},
+    {family:'Breakout ATR',label:'50-bar breakout, ATR 2x / 3.5x',lookback:50,minAtrPct:0.001,atrSL:2,atrTP:3.5},
+
+    {family:'Mean Reversion',label:'RSI≤32, 1.5% below EMA20',rsiEntry:32,rsiExit:55,dipPct:0.015,sl:0.025,tp:0.04},
+    {family:'Mean Reversion',label:'RSI≤28, 2% below EMA20',rsiEntry:28,rsiExit:55,dipPct:0.02,sl:0.03,tp:0.05},
+    {family:'Mean Reversion',label:'RSI≤35, 1% below EMA20',rsiEntry:35,rsiExit:58,dipPct:0.01,sl:0.02,tp:0.035}
   ];
 
   const holdRet=test.length>1?((test[test.length-1].close/test[0].close)-1)*100:0;
   document.getElementById('holdRet').textContent=holdRet.toFixed(2)+'%';
 
-  const rows=configs.map(cfg=>({cfg,train:simulate(train,cfg),test:simulate(test,cfg)}))
+  const rows=configs.map(cfg=>({cfg,train:simulateFamily(train,cfg),test:simulateFamily(test,cfg)}))
     .sort((a,b)=>{
       const as=(a.test.trades>=10?1:0),bs=(b.test.trades>=10?1:0);
       if(as!==bs)return bs-as;
@@ -259,11 +356,11 @@ function runLab(){
 
   document.getElementById('lab').innerHTML=rows.map((x,i)=>{
     const pf=x.test.pf===Infinity?'∞':x.test.pf.toFixed(2);
+    const vsHold=x.test.ret-holdRet;
     return `<tr>
       <td><span class="rank">${i+1}</span></td>
-      <td>${x.cfg.fast}/${x.cfg.slow}</td>
-      <td>${x.cfg.rsiMin}–${x.cfg.rsiMax}</td>
-      <td>${x.cfg.sl}% / ${x.cfg.tp}%</td>
+      <td>${x.cfg.family}</td>
+      <td style="text-align:left">${x.cfg.label}</td>
       <td class="${x.train.ret>=0?'good':'bad'}">${x.train.ret.toFixed(2)}%</td>
       <td class="${x.train.dd<=8?'good':x.train.dd<=15?'neutral':'bad'}">${x.train.dd.toFixed(2)}%</td>
       <td>${x.train.trades}</td>
@@ -272,6 +369,7 @@ function runLab(){
       <td>${x.test.winRate.toFixed(1)}%</td>
       <td>${x.test.trades}</td>
       <td>${pf}</td>
+      <td class="${vsHold>=0?'good':'bad'}">${vsHold>=0?'+':''}${vsHold.toFixed(2)}%</td>
       <td class="${x.test.trades>=10?'good':'neutral'}">${x.test.trades>=10?'OK':'LOW SAMPLE'}</td>
     </tr>`;
   }).join('');
