@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC/PHP Strategy Lab v5</title>
+<title>BTC/PHP Strategy Lab v6</title>
 <style>
 :root{--bg:#07111f;--card:#0f1d30;--line:#263b58;--text:#eef6ff;--muted:#9eb0c8;--green:#55d6a2;--yellow:#ffd166;--red:#ff7b7b;--blue:#77a7ff}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#06101b,#0b1728);color:var(--text);font-family:Inter,system-ui,Arial;padding:18px}
@@ -23,8 +23,8 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>BTC/PHP Strategy Lab v5</h1>
-    <p>Multi-strategy research + walk-forward testing + benchmark. No live order execution.</p>
+    <h1>BTC/PHP Strategy Lab v6</h1>
+    <p>Rolling walk-forward research across multiple market windows. No live order execution.</p>
   </div>
 
   <div class="grid">
@@ -52,7 +52,7 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
         <div><label>Training Split (%)</label><input id="split" type="number" min="50" max="90" value="70"></div>
       </div>
       <div class="actions">
-        <button class="blue" onclick="runLab()">Run Walk-Forward Lab</button>
+        <button class="blue" onclick="runLab()">Run Rolling Walk-Forward Lab</button>
       </div>
       <div class="note">Fees and slippage are included in each simulated trade. Results are research estimates only and do not guarantee future performance.</div>
     </div>
@@ -72,17 +72,18 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
   </div>
 
   <div class="card">
-    <h2>Walk-Forward Results — Multiple Strategy Families</h2>
+    <h2>Rolling Walk-Forward Results</h2>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Rank</th><th>Family</th><th>Setup</th>
-            <th>Train Return</th><th>Train DD</th><th>Train Trades</th>
-            <th>OOS Return</th><th>OOS DD</th><th>OOS Win Rate</th><th>OOS Trades</th><th>OOS Profit Factor</th><th>vs Hold</th><th>Sample Check</th>
+            <th>Rank</th><th>Family</th><th>Setup</th><th>Windows</th>
+            <th>Consistency</th><th>Avg OOS Return</th><th>Median OOS</th>
+            <th>Positive Windows</th><th>Beat Hold</th><th>Worst DD</th>
+            <th>Avg Profit Factor</th><th>Total OOS Trades</th><th>Sample Check</th>
           </tr>
         </thead>
-        <tbody id="lab"><tr><td colspan="13" style="text-align:center;color:#72859d">Load data, then run Walk-Forward Lab.</td></tr></tbody>
+        <tbody id="lab"><tr><td colspan="13" style="text-align:center;color:#72859d">Load data, then run Rolling Walk-Forward Lab.</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -90,7 +91,7 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
   <div class="card">
     <h2>How to Read This</h2>
     <div class="note">
-      We now compare three genuinely different strategy families. A useful candidate should stay stable out-of-sample, keep drawdown controlled, show profit factor above 1.0, have a reasonable trade count, and ideally beat the same-period Buy & Hold benchmark.
+      V6 tests each strategy across separate 30-day out-of-sample windows instead of relying on one lucky period. Consistency score = 50% positive-window rate + 30% rate of beating Buy & Hold + 20% rate of profit factor above 1.0. Treat this as research, not a guarantee of future performance.
     </div>
   </div>
 </div>
@@ -326,54 +327,94 @@ function simulate(data,cfg){
 
 function runLab(){
   if(!marketData.length){setStatus('Load market data first.');return}
-  const splitPct=(Number(document.getElementById('split').value)||70)/100;
-  const cut=Math.max(100,Math.min(marketData.length-50,Math.floor(marketData.length*splitPct)));
-  const train=marketData.slice(0,cut),test=marketData.slice(cut);
 
   const configs=[
     {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 45–60',rsiMin:45,rsiMax:60,sl:0.025,tp:0.05},
     {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 40–58',rsiMin:40,rsiMax:58,sl:0.03,tp:0.06},
     {family:'Trend Pullback',label:'EMA50>200, shallow pullback, RSI 50–65',rsiMin:50,rsiMax:65,sl:0.02,tp:0.04},
-
     {family:'Breakout ATR',label:'20-bar breakout, ATR 1.5x / 3x',lookback:20,minAtrPct:0.0015,atrSL:1.5,atrTP:3},
     {family:'Breakout ATR',label:'30-bar breakout, ATR 2x / 4x',lookback:30,minAtrPct:0.0015,atrSL:2,atrTP:4},
     {family:'Breakout ATR',label:'50-bar breakout, ATR 2x / 3.5x',lookback:50,minAtrPct:0.001,atrSL:2,atrTP:3.5},
-
     {family:'Mean Reversion',label:'RSI≤32, 1.5% below EMA20',rsiEntry:32,rsiExit:55,dipPct:0.015,sl:0.025,tp:0.04},
     {family:'Mean Reversion',label:'RSI≤28, 2% below EMA20',rsiEntry:28,rsiExit:55,dipPct:0.02,sl:0.03,tp:0.05},
     {family:'Mean Reversion',label:'RSI≤35, 1% below EMA20',rsiEntry:35,rsiExit:58,dipPct:0.01,sl:0.02,tp:0.035}
   ];
 
-  const holdRet=test.length>1?((test[test.length-1].close/test[0].close)-1)*100:0;
-  document.getElementById('holdRet').textContent=holdRet.toFixed(2)+'%';
+  const DAY=86400000;
+  const trainDays=days>=365?90:(days>=180?60:45);
+  const testDays=30, stepDays=30;
+  const first=marketData[0].time, last=marketData[marketData.length-1].time;
+  const windows=[];
+  let testStart=first+trainDays*DAY;
 
-  const rows=configs.map(cfg=>({cfg,train:simulateFamily(train,cfg),test:simulateFamily(test,cfg)}))
-    .sort((a,b)=>{
-      const as=(a.test.trades>=10?1:0),bs=(b.test.trades>=10?1:0);
-      if(as!==bs)return bs-as;
-      return b.test.ret-a.test.ret;
-    });
+  while(testStart+testDays*DAY<=last+DAY){
+    const trainStart=testStart-trainDays*DAY;
+    const testEnd=Math.min(testStart+testDays*DAY,last+1);
+    const train=marketData.filter(x=>x.time>=trainStart && x.time<testStart);
+    const test=marketData.filter(x=>x.time>=testStart && x.time<testEnd);
+    if(train.length>=300 && test.length>=250){
+      windows.push({train,test,hold:test.length>1?((test[test.length-1].close/test[0].close)-1)*100:0});
+    }
+    testStart+=stepDays*DAY;
+  }
+
+  if(!windows.length){setStatus('Not enough detailed data for rolling windows. Try 180 Days or 1 Year.');return}
+
+  const holdAvg=windows.reduce((s,w)=>s+w.hold,0)/windows.length;
+  document.getElementById('holdRet').textContent=holdAvg.toFixed(2)+'% avg';
+
+  function median(arr){
+    const a=[...arr].sort((x,y)=>x-y),m=Math.floor(a.length/2);
+    return a.length%2?a[m]:(a[m-1]+a[m])/2;
+  }
+
+  const rows=configs.map(cfg=>{
+    const results=windows.map(w=>({test:simulateFamily(w.test,cfg),hold:w.hold}));
+    const returns=results.map(r=>r.test.ret);
+    const positive=results.filter(r=>r.test.ret>0).length;
+    const beat=results.filter(r=>r.test.ret>r.hold).length;
+    const pfGood=results.filter(r=>r.test.pf>1).length;
+    const trades=results.reduce((s,r)=>s+r.test.trades,0);
+    const worstDD=Math.max(...results.map(r=>r.test.dd));
+    const finitePF=results.map(r=>r.test.pf).filter(Number.isFinite);
+    const avgPF=finitePF.length?finitePF.reduce((a,b)=>a+b,0)/finitePF.length:Infinity;
+    const consistency=(positive/results.length*50)+(beat/results.length*30)+(pfGood/results.length*20);
+    const avgRet=returns.reduce((a,b)=>a+b,0)/returns.length;
+    const medRet=median(returns);
+    const sampleOK=results.length>=4 && trades>=20;
+    return {cfg,windows:results.length,positive,beat,trades,worstDD,avgPF,consistency,avgRet,medRet,sampleOK};
+  }).sort((a,b)=>{
+    if(a.sampleOK!==b.sampleOK)return b.sampleOK-a.sampleOK;
+    if(a.consistency!==b.consistency)return b.consistency-a.consistency;
+    return b.avgRet-a.avgRet;
+  });
 
   document.getElementById('lab').innerHTML=rows.map((x,i)=>{
-    const pf=x.test.pf===Infinity?'∞':x.test.pf.toFixed(2);
-    const vsHold=x.test.ret-holdRet;
+    const pf=x.avgPF===Infinity?'∞':x.avgPF.toFixed(2);
+    const posPct=(x.positive/x.windows*100).toFixed(0);
+    const beatPct=(x.beat/x.windows*100).toFixed(0);
     return `<tr>
       <td><span class="rank">${i+1}</span></td>
       <td>${x.cfg.family}</td>
       <td style="text-align:left">${x.cfg.label}</td>
-      <td class="${x.train.ret>=0?'good':'bad'}">${x.train.ret.toFixed(2)}%</td>
-      <td class="${x.train.dd<=8?'good':x.train.dd<=15?'neutral':'bad'}">${x.train.dd.toFixed(2)}%</td>
-      <td>${x.train.trades}</td>
-      <td class="${x.test.ret>=0?'good':'bad'}">${x.test.ret.toFixed(2)}%</td>
-      <td class="${x.test.dd<=8?'good':x.test.dd<=15?'neutral':'bad'}">${x.test.dd.toFixed(2)}%</td>
-      <td>${x.test.winRate.toFixed(1)}%</td>
-      <td>${x.test.trades}</td>
+      <td>${x.windows}</td>
+      <td class="${x.consistency>=60?'good':x.consistency>=40?'neutral':'bad'}"><b>${x.consistency.toFixed(0)}/100</b></td>
+      <td class="${x.avgRet>=0?'good':'bad'}">${x.avgRet.toFixed(2)}%</td>
+      <td class="${x.medRet>=0?'good':'bad'}">${x.medRet.toFixed(2)}%</td>
+      <td>${x.positive}/${x.windows} (${posPct}%)</td>
+      <td>${x.beat}/${x.windows} (${beatPct}%)</td>
+      <td class="${x.worstDD<=8?'good':x.worstDD<=15?'neutral':'bad'}">${x.worstDD.toFixed(2)}%</td>
       <td>${pf}</td>
-      <td class="${vsHold>=0?'good':'bad'}">${vsHold>=0?'+':''}${vsHold.toFixed(2)}%</td>
-      <td class="${x.test.trades>=10?'good':'neutral'}">${x.test.trades>=10?'OK':'LOW SAMPLE'}</td>
+      <td>${x.trades}</td>
+      <td class="${x.sampleOK?'good':'neutral'}">${x.sampleOK?'OK':'LOW SAMPLE'}</td>
     </tr>`;
   }).join('');
-  updateSummary();
+
+  document.getElementById('points').textContent=marketData.length;
+  document.getElementById('trainPts').textContent=trainDays+' days/window';
+  document.getElementById('testPts').textContent=testDays+' days × '+windows.length;
+  document.getElementById('price').textContent=peso(marketData[marketData.length-1].close);
+  setStatus('Rolling walk-forward complete: '+windows.length+' separate '+testDays+'-day OOS windows.');
 }
 </script>
 </body></html>
