@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BizPilot Booking Demo</title>
+<style>
+:root{--bg:#07111f;--card:#0f1d30;--line:#27415f;--text:#f4f8fc;--muted:#9db0c5;--blue:#5da9ff;--green:#4fd0a4}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(160deg,#06101b,#0b1628);color:var(--text)}
+.wrap{max-width:1050px;margin:auto;padding:22px}.brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.logo{font-weight:900;font-size:24px}.logo span{color:var(--blue)}.tag{font-size:12px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+.card{background:rgba(15,29,48,.95);border:1px solid var(--line);border-radius:20px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+h1{font-size:34px;margin:0 0 8px}h2{margin:0 0 14px;font-size:20px}.sub{color:var(--muted);margin-bottom:18px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}input,select{width:100%;padding:12px 13px;border-radius:12px;border:1px solid #315073;background:#0a1727;color:white;margin-bottom:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{width:100%;border:0;border-radius:12px;padding:13px;font-weight:800;background:var(--blue);color:#06101b;cursor:pointer}
+.success{display:none;margin-top:12px;padding:12px;border-radius:12px;background:#0d2b24;border:1px solid #2d8b6c;color:#cffff0}.success.show{display:block}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}.stat{background:#12253b;border:1px solid #294864;border-radius:14px;padding:12px}.stat small{color:var(--muted)}.stat b{display:block;font-size:22px;margin-top:5px}
+.booking{display:flex;justify-content:space-between;gap:10px;padding:12px;border-bottom:1px solid #23374e}.booking:last-child{border-bottom:0}.name{font-weight:800}.meta{font-size:12px;color:var(--muted)}.pill{align-self:center;padding:6px 9px;border-radius:999px;font-size:11px;font-weight:800;background:#153f35;color:#8ff1cf}
+.footer{margin-top:16px;color:#7890aa;font-size:11px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="logo">BizPilot <span>Digital</span></div><div class="tag">Demo Booking System</div></div>
+  <div class="grid">
+    <div class="card">
+      <h1>Book a Schedule</h1>
+      <div class="sub">A simple booking flow built for small businesses.</div>
+      <label>Customer name</label><input id="name" value="Maria Santos">
+      <div class="row">
+        <div><label>Date</label><input id="date" type="date"></div>
+        <div><label>Time</label><select id="time"><option>10:00 AM</option><option selected>2:00 PM</option><option>4:00 PM</option></select></div>
+      </div>
+      <label>Service</label><select id="service"><option selected>Studio Rental — 2 Hours</option><option>Private Session</option><option>Workshop</option></select>
+      <label>Contact number</label><input id="phone" value="0917 123 4567">
+      <button class="btn" onclick="confirmBooking()">Confirm Booking</button>
+      <div id="success" class="success">✓ Booking confirmed and added to the schedule.</div>
+    </div>
+
+    <div class="card">
+      <h2>Today's Dashboard</h2>
+      <div class="statgrid">
+        <div class="stat"><small>Bookings</small><b id="count">3</b></div>
+        <div class="stat"><small>Available</small><b>5</b></div>
+        <div class="stat"><small>Status</small><b style="color:var(--green);font-size:16px">Organized</b></div>
+      </div>
+      <div id="list">
+        <div class="booking"><div><div class="name">Ana Reyes</div><div class="meta">9:00 AM · Studio Rental</div></div><div class="pill">Confirmed</div></div>
+        <div class="booking"><div><div class="name">Carlo Mendoza</div><div class="meta">11:00 AM · Private Session</div></div><div class="pill">Confirmed</div></div>
+        <div class="booking"><div><div class="name">Jessa Lim</div><div class="meta">1:00 PM · Workshop</div></div><div class="pill">Confirmed</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Demo only · No real customer data · BizPilot Digital</div>
+</div>
+<script>
+const d=new Date(); d.setDate(d.getDate()+1); document.getElementById('date').value=d.toISOString().slice(0,10);
+function confirmBooking(){
+  const name=document.getElementById('name').value||'Sample Customer';
+  const time=document.getElementById('time').value;
+  const service=document.getElementById('service').value.split(' — ')[0];
+  const row=document.createElement('div');
+  row.className='booking';
+  row.innerHTML='<div><div class="name">'+name+'</div><div class="meta">'+time+' · '+service+'</div></div><div class="pill">Confirmed</div>';
+  document.getElementById('list').prepend(row);
+  document.getElementById('count').textContent=Number(document.getElementById('count').textContent)+1;
+  document.getElementById('success').classList.add('show');
+}
+</script>
+</body></html>
