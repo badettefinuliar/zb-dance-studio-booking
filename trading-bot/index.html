@@ -31,7 +31,7 @@ table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:9px;bord
   <div class="tabs">
     <button id="tabA" class="active" onclick="showTab('active')">Active Trading</button>
     <button id="tabB" onclick="showTab('passive')">Passive Benchmark</button>
-    <button id="tabC" onclick="showTab('signals')">Paper Signals</button>
+    <button id="tabC" onclick="showTab('signals');loadPaperState()">Paper Trading Bot</button>
   </div>
 
   <div id="active" class="tab active">
@@ -84,16 +84,32 @@ table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:9px;bord
 
   <div id="signals" class="tab">
     <div class="card">
-      <h2>Paper Signal</h2>
+      <h2>Automatic Paper Trading Bot</h2>
+      <button class="action" onclick="loadPaperState()">Refresh Paper Bot Status</button>
+      <div id="paperStatus" class="status"></div>
       <div id="signal" class="signal wait">WAIT</div>
-      <div id="reason" style="color:var(--muted)">Load market data first.</div>
+      <div id="reason" style="color:var(--muted)">Virtual account only. No real orders.</div>
       <div class="metrics" style="margin-top:14px">
-        <div class="metric"><small>Regime</small><b id="regime">—</b></div>
-        <div class="metric"><small>EMA 50</small><b id="ema50">—</b></div>
-        <div class="metric"><small>EMA 200</small><b id="ema200">—</b></div>
-        <div class="metric"><small>ADX 14</small><b id="adx">—</b></div>
+        <div class="metric"><small>Paper Equity</small><b id="paperEquity">₱—</b></div>
+        <div class="metric"><small>Cash</small><b id="paperCash">₱—</b></div>
+        <div class="metric"><small>BTC Position</small><b id="paperBTC">—</b></div>
+        <div class="metric"><small>Unrealized P/L</small><b id="paperUnrealized">₱—</b></div>
+        <div class="metric"><small>Realized P/L</small><b id="paperRealized">₱—</b></div>
+        <div class="metric"><small>Fees Paid</small><b id="paperFees">₱—</b></div>
+        <div class="metric"><small>Total Trades</small><b id="paperTrades">0</b></div>
+        <div class="metric"><small>Last BTC/PHP</small><b id="paperPrice">₱—</b></div>
       </div>
-      <div class="note">Signal meanings: WATCH = bullish regime but no clean setup, WAIT = sideways/unclear regime, EXIT = bearish regime. These are paper-research labels, not trade instructions.</div>
+      <div class="note">Runs automatically on GitHub every 4 hours. Experimental paper strategy: 4H Donchian-30 breakout, EMA200/EMA50 bullish regime, ADX ≥20, 1% paper-equity risk, 2 ATR initial stop and 3 ATR trailing stop. It never accesses your Coins.ph account or places real orders.</div>
+    </div>
+
+    <div class="card">
+      <h2>Paper Trade History</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Entry</th><th>Exit</th><th>Entry Price</th><th>Exit Price</th><th>Qty BTC</th><th>P/L</th><th>Reason</th></tr></thead>
+          <tbody id="paperLog"><tr><td colspan="8" style="text-align:center;color:#71849c">No paper trades yet.</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -193,6 +209,53 @@ function computeBenchmarks(){
   document.getElementById('tdcaValue').textContent=peso(trendFinal);
   document.getElementById('idleCash').textContent=peso(idleCash);
   document.getElementById('price').textContent=peso(close[last]);
+}
+
+async function loadPaperState(){
+  const stEl=document.getElementById('paperStatus');
+  stEl.textContent='Loading paper bot state...';
+  try{
+    const r=await fetch('./data/paper-state.json?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error();
+    const s=await r.json();
+    const px=Number(s.last_price||0), cash=Number(s.cash||0), btc=Number(s.btc||0);
+    const marketValue=btc*px, equity=cash+marketValue;
+    let unreal=0;
+    if(s.position && btc>0) unreal=marketValue-Number(s.position.cost||0);
+
+    document.getElementById('paperEquity').textContent=peso(equity);
+    document.getElementById('paperCash').textContent=peso(cash);
+    document.getElementById('paperBTC').textContent=btc.toFixed(8);
+    document.getElementById('paperUnrealized').textContent=peso(unreal);
+    document.getElementById('paperRealized').textContent=peso(Number(s.realized_pnl||0));
+    document.getElementById('paperFees').textContent=peso(Number(s.fees_paid||0));
+    document.getElementById('paperTrades').textContent=(s.trades||[]).length;
+    document.getElementById('paperPrice').textContent=px?peso(px):'₱—';
+
+    const sig=(s.last_signal||'WAIT').toUpperCase();
+    const sigEl=document.getElementById('signal');
+    sigEl.textContent=sig;
+    sigEl.className='signal '+(sig==='BUY'?'buy':sig==='EXIT'?'exit':'wait');
+    document.getElementById('reason').textContent=s.position
+      ? 'Paper position is open. The bot is monitoring its ATR trailing stop.'
+      : (sig==='WATCH'?'Bull regime detected, waiting for a Donchian breakout.':'No paper position is open.');
+
+    const rows=(s.trades||[]).slice().reverse();
+    document.getElementById('paperLog').innerHTML=rows.length?rows.map((t,i)=>`<tr>
+      <td>${i+1}</td>
+      <td>${new Date(t.entry_time).toLocaleString()}</td>
+      <td>${new Date(t.exit_time).toLocaleString()}</td>
+      <td>${peso(t.entry_price)}</td>
+      <td>${peso(t.exit_price)}</td>
+      <td>${Number(t.qty).toFixed(8)}</td>
+      <td class="${Number(t.pnl)>=0?'good':'bad'}">${peso(t.pnl)}</td>
+      <td>${t.reason}</td>
+    </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:#71849c">No paper trades yet.</td></tr>';
+
+    stEl.textContent='Paper bot last updated: '+(s.updated_at?new Date(s.updated_at).toLocaleString():'not yet');
+  }catch(e){
+    stEl.textContent='Paper bot state is not ready yet. The first GitHub run may still be starting.';
+  }
 }
 
 function computeSignal(){
