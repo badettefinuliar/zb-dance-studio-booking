@@ -2,280 +2,173 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC/PHP Strategy Lab v10</title>
+<title>BTC/PHP Research Dashboard</title>
 <style>
 :root{--bg:#07111f;--card:#0f1d30;--line:#263b58;--text:#eef6ff;--muted:#9eb0c8;--green:#55d6a2;--yellow:#ffd166;--red:#ff7b7b;--blue:#77a7ff}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#06101b,#0b1728);color:var(--text);font-family:Inter,system-ui,Arial;padding:18px}
-.wrap{max-width:1280px;margin:auto}.hero{padding:18px 2px}.hero h1{margin:0;font-size:clamp(30px,6vw,50px)}.hero p{color:var(--muted);margin:8px 0}
+.wrap{max-width:1200px;margin:auto}.hero{padding:18px 2px}.hero h1{margin:0;font-size:clamp(30px,6vw,50px)}.hero p{color:var(--muted);margin:8px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 16px 50px rgba(0,0,0,.25)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.tabs button{padding:10px 14px;border:0;border-radius:11px;background:#233753;color:#fff;font-weight:800;cursor:pointer}.tabs button.active{background:var(--green);color:#062017}
+.tab{display:none}.tab.active{display:block}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:850px){.grid{grid-template-columns:1fr}}
-.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:760px){.controls{grid-template-columns:1fr 1fr}}@media(max-width:520px){.controls{grid-template-columns:1fr}}
-label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}input{width:100%;padding:11px;border-radius:11px;border:1px solid #395371;background:#081321;color:white}
-button{padding:11px 14px;border:0;border-radius:11px;font-weight:800;cursor:pointer}.primary{background:var(--green);color:#062017}.secondary{background:#233753;color:#fff}.blue{background:var(--blue);color:#081321}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:700px){.metrics{grid-template-columns:1fr 1fr}}
 .metric{background:#14243a;border:1px solid #29405d;border-radius:14px;padding:13px}.metric small{display:block;color:var(--muted);margin-bottom:6px}.metric b{font-size:20px}
-.note{font-size:12px;color:var(--muted);line-height:1.5;background:#0a1626;border:1px solid #243a56;padding:11px;border-radius:11px;margin-top:12px}.status{min-height:20px;color:#c7f1df;margin-top:10px;font-size:13px}
-table{width:100%;border-collapse:collapse;min-width:1220px}th,td{padding:9px;border-bottom:1px solid #223650;text-align:right;font-size:12px}th:first-child,td:first-child{text-align:left}.table-wrap{overflow:auto}
-.good{color:var(--green)}.bad{color:var(--red)}.neutral{color:var(--yellow)}.rank{display:inline-block;min-width:26px;text-align:center;padding:3px 7px;border-radius:999px;background:#203553;color:#dfeaff;font-weight:800}
-.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#203553;font-size:11px;font-weight:800}
+.note{font-size:12px;color:var(--muted);line-height:1.5;background:#0a1626;border:1px solid #243a56;padding:11px;border-radius:11px;margin-top:12px}
+.good{color:var(--green)}.bad{color:var(--red)}.neutral{color:var(--yellow)}
+button.action{padding:11px 14px;border:0;border-radius:11px;font-weight:800;cursor:pointer;background:var(--blue);color:#081321}
+.status{min-height:20px;color:#c7f1df;margin-top:10px;font-size:13px}
+table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:9px;border-bottom:1px solid #223650;text-align:right;font-size:12px}th:first-child,td:first-child{text-align:left}.table-wrap{overflow:auto}
+.signal{font-size:42px;font-weight:900}.buy{color:var(--green)}.wait{color:var(--yellow)}.exit{color:var(--red)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>BTC/PHP Strategy Lab v10</h1>
-    <p>4H trend-following research: EMA200 regime + Donchian breakout + ATR trailing stop. No live order execution.</p>
+    <h1>BTC/PHP Research Dashboard</h1>
+    <p>Strategy research, passive benchmarks, and paper-only signals. No live order execution.</p>
   </div>
 
-  <div class="grid">
+  <div class="tabs">
+    <button id="tabA" class="active" onclick="showTab('active')">Active Trading</button>
+    <button id="tabB" onclick="showTab('passive')">Passive Benchmark</button>
+    <button id="tabC" onclick="showTab('signals')">Paper Signals</button>
+  </div>
+
+  <div id="active" class="tab active">
     <div class="card">
-      <h2>Coins.ph 4H OHLCV</h2>
-      <div class="actions">
-        <button class="primary" onclick="loadOHLC()">Load Coins.ph 4H Data</button>
-        <button class="secondary" onclick="runDemo()">Run Demo 4H</button>
+      <h2>Active Trading Research Status</h2>
+      <div class="metrics">
+        <div class="metric"><small>Current Verdict</small><b class="neutral">NO PASS YET</b></div>
+        <div class="metric"><small>Best Tested Family</small><b>Breakout / Mean Reversion</b></div>
+        <div class="metric"><small>Robust OOS Edge</small><b class="bad">Not Found</b></div>
+        <div class="metric"><small>Live Trading</small><b class="bad">Disabled</b></div>
       </div>
+      <div class="note">Across the versions we tested, strategies often looked good in one period but failed in rolling out-of-sample checks after fees and slippage. This dashboard now keeps active trading in research mode only.</div>
+    </div>
+
+    <div class="card">
+      <h2>What We Learned</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Approach</th><th>What Happened</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>EMA + RSI</td><td>Enough trades, but negative OOS returns</td><td class="bad">Rejected</td></tr>
+            <tr><td>Mean Reversion 1H</td><td>More trades, but profit factor stayed below 1</td><td class="bad">Rejected</td></tr>
+            <tr><td>Mean Reversion 4H</td><td>Lower drawdown, but weak sample and still negative</td><td class="neutral">Not enough edge</td></tr>
+            <tr><td>Trend Following 4H</td><td>Cleaner behavior, but still negative on rolling tests</td><td class="neutral">Research only</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="passive" class="tab">
+    <div class="card">
+      <h2>Passive Benchmark</h2>
+      <button class="action" onclick="loadData()">Load Coins.ph 4H Data</button>
       <div id="status" class="status"></div>
-      <div class="note">V10 is intentionally 4H-only because the slower timeframe behaved more cleanly in prior tests. The browser reads the stored Coins.ph OHLCV file from this site.</div>
-    </div>
-
-    <div class="card">
-      <h2>Research Assumptions</h2>
-      <div class="controls">
-        <div><label>Starting Balance (₱)</label><input id="balance" type="number" value="100000"></div>
-        <div><label>Trading Fee (%)</label><input id="fee" type="number" step="0.01" value="0.10"></div>
-        <div><label>Slippage (%)</label><input id="slip" type="number" step="0.01" value="0.05"></div>
-        <div><label>OOS Window (days)</label><input id="windowDays" type="number" min="30" max="90" value="45"></div>
+      <div class="metrics" style="margin-top:12px">
+        <div class="metric"><small>1Y Buy & Hold</small><b id="hold">—</b></div>
+        <div class="metric"><small>Monthly DCA Return</small><b id="dca">—</b></div>
+        <div class="metric"><small>Trend-Filtered DCA</small><b id="tdca">—</b></div>
+        <div class="metric"><small>Latest BTC/PHP</small><b id="price">₱—</b></div>
       </div>
-      <div class="actions"><button class="blue" onclick="runLab()">Run V10 Trend Lab</button></div>
-      <div class="note">Long-only spot-style simulation. A trade can only start during a bullish regime. Stops use candle low/high with a conservative intrabar assumption.</div>
+      <div class="note">DCA here is a research benchmark using equal monthly contributions. Trend-filtered DCA only buys when price is above EMA200. It does not place orders.</div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="metrics">
-      <div class="metric"><small>Candles Loaded</small><b id="points">—</b></div>
-      <div class="metric"><small>Latest BTC/PHP</small><b id="price">₱—</b></div>
-      <div class="metric"><small>Current Regime</small><b id="regime">—</b></div>
-      <div class="metric"><small>ADX 14</small><b id="adx">—</b></div>
-      <div class="metric"><small>ATR 14 %</small><b id="atrPct">—</b></div>
-      <div class="metric"><small>EMA 50</small><b id="ema50">—</b></div>
-      <div class="metric"><small>EMA 200</small><b id="ema200">—</b></div>
-      <div class="metric"><small>Avg Buy & Hold / Window</small><b id="holdRet">—</b></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>V10 Rolling Trend-Following Results</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Rank</th><th>Setup</th><th>Entry Type</th><th>Windows</th><th>Consistency</th>
-            <th>Avg OOS Return</th><th>Median OOS</th><th>Positive Windows</th><th>Beat Hold</th>
-            <th>Worst DD</th><th>Avg PF</th><th>Total Trades</th><th>Win Rate</th><th>Sample</th>
-          </tr>
-        </thead>
-        <tbody id="lab"><tr><td colspan="14" style="text-align:center;color:#72859d">Load 4H data, then run V10 Trend Lab.</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>V10 Logic</h2>
-    <div class="note">
-      Bull regime = price above EMA200, EMA50 above EMA200, EMA200 rising, and ADX above a minimum threshold. Breakout entries require a Donchian high breakout. Pullback entries require a dip toward EMA20/EMA50 followed by a rebound. Exits use an ATR initial stop plus ATR trailing stop, or regime failure.
+  <div id="signals" class="tab">
+    <div class="card">
+      <h2>Paper Signal</h2>
+      <div id="signal" class="signal wait">WAIT</div>
+      <div id="reason" style="color:var(--muted)">Load market data first.</div>
+      <div class="metrics" style="margin-top:14px">
+        <div class="metric"><small>Regime</small><b id="regime">—</b></div>
+        <div class="metric"><small>EMA 50</small><b id="ema50">—</b></div>
+        <div class="metric"><small>EMA 200</small><b id="ema200">—</b></div>
+        <div class="metric"><small>ADX 14</small><b id="adx">—</b></div>
+      </div>
+      <div class="note">Signal meanings: WATCH = bullish regime but no clean setup, WAIT = sideways/unclear regime, EXIT = bearish regime. These are paper-research labels, not trade instructions.</div>
     </div>
   </div>
 </div>
 
 <script>
-let ohlc=[];
+let data=[];
 
-const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{maximumFractionDigits:2});
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  ['tabA','tabB','tabC'].forEach(x=>document.getElementById(x).classList.remove('active'));
+  document.getElementById(id==='active'?'tabA':id==='passive'?'tabB':'tabC').classList.add('active');
+}
+
 function ema(v,p){const o=Array(v.length).fill(null),k=2/(p+1);let s=0;for(let i=0;i<v.length;i++){if(i<p){s+=v[i];if(i===p-1)o[i]=s/p}else o[i]=v[i]*k+o[i-1]*(1-k)}return o}
-function sma(v,p){const o=Array(v.length).fill(null);let s=0;for(let i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p}return o}
-function rsi(v,p=14){const o=Array(v.length).fill(null);if(v.length<=p)return o;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>=0)g+=d;else l-=d}let ag=g/p,al=l/p;o[p]=al===0?100:100-100/(1+ag/al);for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1],gg=Math.max(d,0),ll=Math.max(-d,0);ag=(ag*(p-1)+gg)/p;al=(al*(p-1)+ll)/p;o[i]=al===0?100:100-100/(1+ag/al)}return o}
-function atr(data,p=14){
-  const tr=Array(data.length).fill(0),out=Array(data.length).fill(null);
-  for(let i=1;i<data.length;i++)tr[i]=Math.max(data[i].high-data[i].low,Math.abs(data[i].high-data[i-1].close),Math.abs(data[i].low-data[i-1].close));
-  let s=0;for(let i=1;i<data.length;i++){s+=tr[i];if(i>p)s-=tr[i-p];if(i>=p)out[i]=s/p}
+function adx(d,p=14){
+  const n=d.length,plus=Array(n).fill(0),minus=Array(n).fill(0),tr=Array(n).fill(0),dx=Array(n).fill(null),out=Array(n).fill(null);
+  for(let i=1;i<n;i++){const up=d[i].high-d[i-1].high,down=d[i-1].low-d[i].low;plus[i]=(up>down&&up>0)?up:0;minus[i]=(down>up&&down>0)?down:0;tr[i]=Math.max(d[i].high-d[i].low,Math.abs(d[i].high-d[i-1].close),Math.abs(d[i].low-d[i-1].close))}
+  let t=0,pd=0,md=0;for(let i=1;i<=p;i++){t+=tr[i];pd+=plus[i];md+=minus[i]}
+  for(let i=p;i<n;i++){if(i>p){t=t-t/p+tr[i];pd=pd-pd/p+plus[i];md=md-md/p+minus[i]}const a=t?100*pd/t:0,b=t?100*md/t:0,den=a+b;dx[i]=den?100*Math.abs(a-b)/den:0}
+  let s=0,c=0;for(let i=p;i<Math.min(n,p*2);i++){if(dx[i]!=null){s+=dx[i];c++}}
+  if(c){out[p*2-1]=s/c;for(let i=p*2;i<n;i++)out[i]=(out[i-1]*(p-1)+dx[i])/p}
   return out;
 }
-function adx(data,p=14){
-  const n=data.length,plusDM=Array(n).fill(0),minusDM=Array(n).fill(0),tr=Array(n).fill(0),dx=Array(n).fill(null),out=Array(n).fill(null);
-  for(let i=1;i<n;i++){
-    const up=data[i].high-data[i-1].high,down=data[i-1].low-data[i].low;
-    plusDM[i]=(up>down&&up>0)?up:0;minusDM[i]=(down>up&&down>0)?down:0;
-    tr[i]=Math.max(data[i].high-data[i].low,Math.abs(data[i].high-data[i-1].close),Math.abs(data[i].low-data[i-1].close));
-  }
-  let trS=0,pS=0,mS=0;for(let i=1;i<=p;i++){trS+=tr[i];pS+=plusDM[i];mS+=minusDM[i]}
-  for(let i=p;i<n;i++){
-    if(i>p){trS=trS-trS/p+tr[i];pS=pS-pS/p+plusDM[i];mS=mS-mS/p+minusDM[i]}
-    const pDI=trS?100*pS/trS:0,mDI=trS?100*mS/trS:0,den=pDI+mDI;dx[i]=den?100*Math.abs(pDI-mDI)/den:0;
-  }
-  let seed=0,count=0;for(let i=p;i<Math.min(n,p*2);i++){if(dx[i]!=null){seed+=dx[i];count++}}
-  if(count){out[p*2-1]=seed/count;for(let i=p*2;i<n;i++)out[i]=(out[i-1]*(p-1)+dx[i])/p}
-  return out;
-}
-function highest(v,p,i){let m=-Infinity;for(let k=Math.max(0,i-p);k<i;k++)m=Math.max(m,v[k]);return m}
-function median(a){const b=[...a].sort((x,y)=>x-y),m=Math.floor(b.length/2);return b.length%2?b[m]:(b[m-1]+b[m])/2}
+const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{maximumFractionDigits:2});
 
-function indicators(data){
-  const close=data.map(x=>x.close),e20=ema(close,20),e50=ema(close,50),e200=ema(close,200),a=atr(data,14),x=adx(data,14),r=rsi(close,14);
-  const bull=Array(data.length).fill(false);
-  for(let i=220;i<data.length;i++){
-    const slope=(e200[i]-e200[i-20])/e200[i];
-    bull[i]=close[i]>e200[i] && e50[i]>e200[i] && slope>0 && x[i]!=null;
-  }
-  return {close,e20,e50,e200,a,x,r,bull};
-}
-
-async function loadOHLC(){
-  const status=document.getElementById('status');
-  status.textContent='Loading saved Coins.ph 4H OHLCV...';
+async function loadData(){
+  const st=document.getElementById('status');st.textContent='Loading Coins.ph 4H data...';
   try{
     const r=await fetch('./data/btcphp-4h.json?ts='+Date.now(),{cache:'no-store'});
-    if(!r.ok)throw new Error('file not ready');
+    if(!r.ok)throw new Error();
     const raw=await r.json();
-    if(!Array.isArray(raw)||raw.length<500)throw new Error('not enough candles');
-    ohlc=raw.map(k=>({time:Number(k[0]),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4]),volume:Number(k[5])}));
-    updateSummary();runLab();status.textContent='Loaded '+ohlc.length+' real Coins.ph 4H candles.';
-  }catch(e){status.textContent='4H OHLCV file could not be loaded. Try again shortly.'}
+    data=raw.map(k=>({time:Number(k[0]),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4]),volume:Number(k[5])}));
+    if(data.length<300)throw new Error();
+    computeBenchmarks();
+    computeSignal();
+    st.textContent='Loaded '+data.length+' real Coins.ph 4H candles.';
+  }catch(e){st.textContent='Could not load stored market data. Try again shortly.'}
 }
 
-function runDemo(){
-  const bars=6*365,step=14400000;let p=5000000,t=Date.now()-bars*step;ohlc=[];
-  for(let i=0;i<bars;i++){
-    const regime=Math.sin(i/250),drift=regime>0.2?6000:regime<-0.2?-5000:0;
-    const open=p,move=drift+(Math.random()-.49)*35000,close=Math.max(100000,open+move);
-    const high=Math.max(open,close)+Math.random()*22000,low=Math.min(open,close)-Math.random()*22000;
-    ohlc.push({time:t+i*step,open,high,low,close,volume:1+Math.random()*3});p=close;
-  }
-  updateSummary();runLab();document.getElementById('status').textContent='Demo 4H data loaded.';
-}
+function computeBenchmarks(){
+  const close=data.map(x=>x.close),e200=ema(close,200),last=data.length-1;
+  const oneYearBars=Math.min(6*365,data.length-1),start=data.length-1-oneYearBars;
+  const hold=(close[last]/close[start]-1)*100;
+  document.getElementById('hold').textContent=hold.toFixed(2)+'%';
+  document.getElementById('price').textContent=peso(close[last]);
 
-function updateSummary(){
-  if(!ohlc.length)return;
-  const ind=indicators(ohlc),i=ohlc.length-1;
-  const slope=(ind.e200[i]-ind.e200[i-20])/ind.e200[i];
-  const bull=ind.bull[i] && ind.x[i]>=18;
-  const bear=ohlc[i].close<ind.e200[i] && ind.e50[i]<ind.e200[i] && slope<0;
-  document.getElementById('points').textContent=ohlc.length;
-  document.getElementById('price').textContent=peso(ohlc[i].close);
-  document.getElementById('regime').textContent=bull?'BULL':bear?'BEAR':'SIDEWAYS';
-  document.getElementById('adx').textContent=ind.x[i]!=null?ind.x[i].toFixed(1):'—';
-  document.getElementById('atrPct').textContent=ind.a[i]!=null?(ind.a[i]/ohlc[i].close*100).toFixed(2)+'%':'—';
-  document.getElementById('ema50').textContent=ind.e50[i]!=null?peso(ind.e50[i]):'—';
-  document.getElementById('ema200').textContent=ind.e200[i]!=null?peso(ind.e200[i]):'—';
-}
-
-function simulateWindow(data,ind,cfg,s,e){
-  const startBal=Number(document.getElementById('balance').value)||100000;
-  const fee=(Number(document.getElementById('fee').value)||0.10)/100,slip=(Number(document.getElementById('slip').value)||0.05)/100;
-  let bal=startBal,pos=null,trades=0,wins=0,gWin=0,gLoss=0,peakBal=startBal,maxDD=0,lastExit=-9999;
-
-  for(let i=Math.max(s,220);i<e;i++){
-    const c=data[i],atrNow=ind.a[i]||0;
-    const slope=(ind.e200[i]-ind.e200[i-20])/ind.e200[i];
-    const bull=ind.bull[i] && ind.x[i]>=cfg.adxMin && slope>=cfg.slopeMin;
-
-    if(pos){
-      pos.highest=Math.max(pos.highest,c.high);
-      const trail=pos.highest-cfg.trailATR*atrNow;
-      pos.stop=Math.max(pos.stop,trail);
-
-      let exitPx=null;
-      if(c.low<=pos.stop) exitPx=pos.stop*(1-slip);
-      else if(!bull) exitPx=c.close*(1-slip);
-      else if(cfg.maxBars && i-pos.entryBar>=cfg.maxBars) exitPx=c.close*(1-slip);
-
-      if(exitPx!=null){
-        const move=(exitPx-pos.entry)/pos.entry;
-        const gross=bal*move,fees=(bal*fee)+(bal*(1+move)*fee),pnl=gross-fees;
-        bal+=pnl;trades++;if(pnl>=0){wins++;gWin+=pnl}else gLoss+=Math.abs(pnl);
-        pos=null;lastExit=i;
-      }
+  const monthMs=30*24*3600*1000;
+  let next=data[start].time,invested=0,btc=0,btcTrend=0,investedTrend=0;
+  for(let i=start;i<=last;i++){
+    if(data[i].time>=next){
+      const contribution=10000;
+      invested+=contribution;btc+=contribution/close[i];
+      if(e200[i]!=null && close[i]>e200[i]){investedTrend+=contribution;btcTrend+=contribution/close[i]}
+      next+=monthMs;
     }
-
-    if(!pos && i-lastExit>=cfg.cooldown && bull){
-      let enter=false;
-      if(cfg.type==='Breakout'){
-        enter=c.close>highest(ind.close,cfg.lookback,i) && ind.r[i]>=cfg.rsiMin;
-      }else{
-        const nearEMA=c.low<=ind.e20[i]*1.01 && c.low>=ind.e50[i]*0.97;
-        const rebound=c.close>c.open && c.close>data[i-1].close;
-        enter=nearEMA && rebound && ind.r[i]>=cfg.rsiMin && ind.r[i]<=cfg.rsiMax;
-      }
-
-      if(enter){
-        const entry=c.close*(1+slip);
-        pos={entry,entryBar:i,highest:c.high,stop:entry-cfg.initATR*atrNow};
-      }
-    }
-
-    peakBal=Math.max(peakBal,bal);
-    if(peakBal>0)maxDD=Math.max(maxDD,(peakBal-bal)/peakBal);
   }
-
-  if(pos){
-    const exitPx=data[e-1].close*(1-slip),move=(exitPx-pos.entry)/pos.entry;
-    const gross=bal*move,fees=(bal*fee)+(bal*(1+move)*fee),pnl=gross-fees;
-    bal+=pnl;trades++;if(pnl>=0){wins++;gWin+=pnl}else gLoss+=Math.abs(pnl);
-    peakBal=Math.max(peakBal,bal);if(peakBal>0)maxDD=Math.max(maxDD,(peakBal-bal)/peakBal);
-  }
-
-  return {ret:(bal-startBal)/startBal*100,dd:maxDD*100,pf:gLoss>0?gWin/gLoss:(gWin>0?Infinity:0),trades,wins,winRate:trades?wins/trades*100:0};
+  const dcaValue=btc*close[last],dcaRet=invested?((dcaValue/invested)-1)*100:0;
+  const tdcaValue=btcTrend*close[last],tdcaRet=investedTrend?((tdcaValue/investedTrend)-1)*100:0;
+  document.getElementById('dca').textContent=dcaRet.toFixed(2)+'%';
+  document.getElementById('tdca').textContent=tdcaRet.toFixed(2)+'%';
 }
 
-function runLab(){
-  if(!ohlc.length){document.getElementById('status').textContent='Load 4H data first.';return}
-  const ind=indicators(ohlc);
-
-  const configs=[
-    {type:'Breakout',label:'Donchian 20 • ADX≥18 • 2 ATR stop • 3 ATR trail',lookback:20,adxMin:18,slopeMin:0,rsiMin:50,initATR:2,trailATR:3,cooldown:3,maxBars:0},
-    {type:'Breakout',label:'Donchian 30 • ADX≥20 • 2 ATR stop • 3 ATR trail',lookback:30,adxMin:20,slopeMin:0,rsiMin:50,initATR:2,trailATR:3,cooldown:4,maxBars:0},
-    {type:'Breakout',label:'Donchian 50 • ADX≥20 • 2.5 ATR stop • 3.5 ATR trail',lookback:50,adxMin:20,slopeMin:0,rsiMin:52,initATR:2.5,trailATR:3.5,cooldown:5,maxBars:0},
-    {type:'Breakout',label:'Donchian 80 • ADX≥22 • 2.5 ATR stop • 4 ATR trail',lookback:80,adxMin:22,slopeMin:.0005,rsiMin:52,initATR:2.5,trailATR:4,cooldown:6,maxBars:0},
-    {type:'Breakout',label:'Donchian 20 • ADX≥25 • 1.5 ATR stop • 2.5 ATR trail',lookback:20,adxMin:25,slopeMin:.0005,rsiMin:55,initATR:1.5,trailATR:2.5,cooldown:4,maxBars:0},
-    {type:'Pullback',label:'EMA20/50 pullback • RSI 45–60 • 2 ATR stop • 3 ATR trail',adxMin:18,slopeMin:0,rsiMin:45,rsiMax:60,initATR:2,trailATR:3,cooldown:4,maxBars:60},
-    {type:'Pullback',label:'EMA20/50 pullback • RSI 40–58 • 2.5 ATR stop • 3.5 ATR trail',adxMin:20,slopeMin:0,rsiMin:40,rsiMax:58,initATR:2.5,trailATR:3.5,cooldown:5,maxBars:72},
-    {type:'Pullback',label:'EMA20/50 pullback • RSI 50–65 • 1.8 ATR stop • 3 ATR trail',adxMin:22,slopeMin:.0005,rsiMin:50,rsiMax:65,initATR:1.8,trailATR:3,cooldown:4,maxBars:48}
-  ];
-
-  const barsPerDay=6,wd=Number(document.getElementById('windowDays').value)||45,testBars=wd*barsPerDay;
-  const windows=[];for(let s=220;s+testBars<=ohlc.length;s+=testBars){const e=s+testBars,hold=(ohlc[e-1].close/ohlc[s].close-1)*100;windows.push({s,e,hold})}
-  if(windows.length<3){document.getElementById('status').textContent='Not enough history for rolling windows.';return}
-
-  document.getElementById('holdRet').textContent=(windows.reduce((a,w)=>a+w.hold,0)/windows.length).toFixed(2)+'%';
-
-  const rows=configs.map(cfg=>{
-    const rr=windows.map(w=>({x:simulateWindow(ohlc,ind,cfg,w.s,w.e),hold:w.hold}));
-    const returns=rr.map(z=>z.x.ret),positive=rr.filter(z=>z.x.ret>0).length,beat=rr.filter(z=>z.x.ret>z.hold).length,pfgood=rr.filter(z=>z.x.pf>1).length;
-    const trades=rr.reduce((a,z)=>a+z.x.trades,0),wins=rr.reduce((a,z)=>a+z.x.wins,0),worstDD=Math.max(...rr.map(z=>z.x.dd));
-    const pfs=rr.map(z=>z.x.pf).filter(Number.isFinite),avgPF=pfs.length?pfs.reduce((a,b)=>a+b,0)/pfs.length:Infinity;
-    const consistency=positive/rr.length*50+beat/rr.length*30+pfgood/rr.length*20;
-    return {cfg,n:rr.length,avg:returns.reduce((a,b)=>a+b,0)/returns.length,med:median(returns),positive,beat,worstDD,avgPF,trades,winRate:trades?wins/trades*100:0,consistency,sample:trades>=20};
-  }).sort((a,b)=>a.sample!==b.sample?b.sample-a.sample:b.consistency-a.consistency||b.avg-a.avg);
-
-  document.getElementById('lab').innerHTML=rows.map((x,i)=>`<tr>
-    <td><span class="rank">${i+1}</span></td>
-    <td style="text-align:left">${x.cfg.label}</td>
-    <td><span class="pill">${x.cfg.type}</span></td>
-    <td>${x.n}</td>
-    <td class="${x.consistency>=60?'good':x.consistency>=40?'neutral':'bad'}"><b>${x.consistency.toFixed(0)}/100</b></td>
-    <td class="${x.avg>=0?'good':'bad'}">${x.avg.toFixed(2)}%</td>
-    <td class="${x.med>=0?'good':'bad'}">${x.med.toFixed(2)}%</td>
-    <td>${x.positive}/${x.n}</td>
-    <td>${x.beat}/${x.n}</td>
-    <td class="${x.worstDD<=8?'good':x.worstDD<=15?'neutral':'bad'}">${x.worstDD.toFixed(2)}%</td>
-    <td>${x.avgPF===Infinity?'∞':x.avgPF.toFixed(2)}</td>
-    <td>${x.trades}</td>
-    <td>${x.winRate.toFixed(1)}%</td>
-    <td class="${x.sample?'good':'neutral'}">${x.sample?'OK':'LOW SAMPLE'}</td>
-  </tr>`).join('');
-
-  document.getElementById('status').textContent='V10 trend lab complete across '+windows.length+' rolling windows.';
+function computeSignal(){
+  const close=data.map(x=>x.close),e50=ema(close,50),e200=ema(close,200),ax=adx(data,14),i=data.length-1;
+  const slope=(e200[i]-e200[i-20])/e200[i];
+  let regime='SIDEWAYS',sig='WAIT',cls='wait',reason='No clear trend regime.';
+  if(close[i]>e200[i] && e50[i]>e200[i] && slope>0){
+    regime='BULL';
+    if(ax[i]>=20){sig='WATCH';cls='buy';reason='Bullish regime with trend strength. Research watch only.'}
+    else{sig='WAIT';cls='wait';reason='Bullish bias, but ADX is still weak.'}
+  }else if(close[i]<e200[i] && e50[i]<e200[i] && slope<0){
+    regime='BEAR';sig='EXIT';cls='exit';reason='Bearish regime under the research rules.';
+  }
+  document.getElementById('regime').textContent=regime;
+  document.getElementById('ema50').textContent=peso(e50[i]);
+  document.getElementById('ema200').textContent=peso(e200[i]);
+  document.getElementById('adx').textContent=ax[i]!=null?ax[i].toFixed(1):'—';
+  const s=document.getElementById('signal');s.textContent=sig;s.className='signal '+cls;
+  document.getElementById('reason').textContent=reason;
 }
 </script>
 </body>
