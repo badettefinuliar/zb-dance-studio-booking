@@ -40,5 +40,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add trading-bot/data/btcphp-15m.json
           git diff --cached --quiet && exit 0
-          git commit -m "Refresh Coins.ph BTC data [skip ci]"
+          git commit -m "Refresh Coins.ph BTC data"
           git push
