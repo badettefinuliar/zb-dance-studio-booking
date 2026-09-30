@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC/PHP Strategy Lab v8</title>
+<title>BTC/PHP Strategy Lab v9</title>
 <style>
 :root{--bg:#07111f;--card:#0f1d30;--line:#263b58;--text:#eef6ff;--muted:#9eb0c8;--green:#55d6a2;--yellow:#ffd166;--red:#ff7b7b;--blue:#77a7ff}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#06101b,#0b1728);color:var(--text);font-family:Inter,system-ui,Arial;padding:18px}
@@ -24,8 +24,8 @@ table{width:100%;border-collapse:collapse;min-width:1180px}th,td{padding:9px;bor
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>BTC/PHP Strategy Lab v8</h1>
-    <p>Sideways-market mean reversion research using real Coins.ph OHLCV. No live order execution.</p>
+    <h1>BTC/PHP Strategy Lab v9</h1>
+    <p>Relaxed-filter sideways mean reversion research using real Coins.ph OHLCV. No live order execution.</p>
   </div>
 
   <div class="grid">
@@ -51,7 +51,7 @@ table{width:100%;border-collapse:collapse;min-width:1180px}th,td{padding:9px;bor
         <div><label>Slippage (%)</label><input id="slip" type="number" step="0.01" value="0.05"></div>
         <div><label>OOS Window (days)</label><input id="windowDays" type="number" min="15" max="60" value="30"></div>
       </div>
-      <div class="actions"><button class="blue" onclick="runLab()">Run V8 Mean-Reversion Lab</button></div>
+      <div class="actions"><button class="blue" onclick="runLab()">Run V9 Mean-Reversion Lab</button></div>
       <div class="note">Conservative intrabar assumption: if stop-loss and take-profit are both touched in one candle, the stop is counted first.</div>
     </div>
   </div>
@@ -70,7 +70,7 @@ table{width:100%;border-collapse:collapse;min-width:1180px}th,td{padding:9px;bor
   </div>
 
   <div class="card">
-    <h2>V8 Rolling Mean-Reversion Results</h2>
+    <h2>V9 Rolling Mean-Reversion Results</h2>
     <div class="table-wrap">
       <table>
         <thead>
@@ -86,9 +86,9 @@ table{width:100%;border-collapse:collapse;min-width:1180px}th,td{padding:9px;bor
   </div>
 
   <div class="card">
-    <h2>V8 Logic</h2>
+    <h2>V9 Logic</h2>
     <div class="note">
-      Entry requires a sideways regime, price at or below the lower Bollinger Band, oversold RSI, acceptable ATR volatility, and non-spike volume. Exit uses Bollinger mean recovery, RSI recovery, or fixed stop/take levels. The lab evaluates the same setups across many separate 30-day out-of-sample windows.
+      V9 keeps the sideways-regime idea but relaxes entry filters: slightly wider ADX limits, looser volume gates, and entries near the lower Bollinger Band instead of requiring a perfect touch. The goal is a usable sample size without removing risk controls.
     </div>
   </div>
 </div>
@@ -241,7 +241,7 @@ function simulateWindow(data,ind,cfg,s,e){
 function updateSummary(){
   if(!ohlc.length)return;
   const ind=indicators(ohlc),i=ohlc.length-1,bb=ind.bb(20,2);
-  const generic={adxMax:22,atrMin:0.001,atrMax:0.025,emaGapMax:0.025,slopeMax:0.015};
+  const generic={adxMax:30,atrMin:0.0005,atrMax:0.04,emaGapMax:0.04,slopeMax:0.025};
   let ranging=0;for(let k=220;k<ohlc.length;k++)if(isRanging(ind,k,generic))ranging++;
   document.getElementById('points').textContent=ohlc.length;
   document.getElementById('price').textContent=peso(ohlc[i].close);
@@ -257,14 +257,14 @@ function runLab(){
   if(!ohlc.length){document.getElementById('status').textContent='Load OHLCV data first.';return}
   const ind=indicators(ohlc);
   const configs=[
-    {label:'BB20 2σ • RSI≤35 • ADX≤22 • ATR 0.10–2.5%',bbPeriod:20,bbStd:2,rsiEntry:35,rsiExit:55,adxMax:22,atrMin:.001,atrMax:.025,emaGapMax:.025,slopeMax:.015,volMin:.35,volMax:1.6,bandEntry:1.00,sl:.02,tp:.035,cooldown:6},
-    {label:'BB20 2σ • RSI≤30 • ADX≤20 • ATR 0.10–2.0%',bbPeriod:20,bbStd:2,rsiEntry:30,rsiExit:55,adxMax:20,atrMin:.001,atrMax:.02,emaGapMax:.02,slopeMax:.012,volMin:.35,volMax:1.4,bandEntry:1.00,sl:.0225,tp:.04,cooldown:8},
-    {label:'BB20 2.2σ • RSI≤35 • ADX≤20 • quiet volume',bbPeriod:20,bbStd:2.2,rsiEntry:35,rsiExit:58,adxMax:20,atrMin:.001,atrMax:.02,emaGapMax:.02,slopeMax:.012,volMin:.30,volMax:1.2,bandEntry:1.00,sl:.02,tp:.04,cooldown:8},
-    {label:'BB30 2σ • RSI≤35 • ADX≤22',bbPeriod:30,bbStd:2,rsiEntry:35,rsiExit:55,adxMax:22,atrMin:.001,atrMax:.025,emaGapMax:.025,slopeMax:.015,volMin:.35,volMax:1.5,bandEntry:1.00,sl:.02,tp:.035,cooldown:8},
-    {label:'BB30 2.2σ • RSI≤32 • ADX≤18',bbPeriod:30,bbStd:2.2,rsiEntry:32,rsiExit:55,adxMax:18,atrMin:.001,atrMax:.018,emaGapMax:.018,slopeMax:.01,volMin:.30,volMax:1.3,bandEntry:1.00,sl:.018,tp:.035,cooldown:10},
-    {label:'BB20 2σ • RSI≤38 • ADX≤18 • tighter range',bbPeriod:20,bbStd:2,rsiEntry:38,rsiExit:58,adxMax:18,atrMin:.001,atrMax:.018,emaGapMax:.015,slopeMax:.008,volMin:.35,volMax:1.3,bandEntry:.998,sl:.018,tp:.03,cooldown:6},
-    {label:'BB20 2.5σ • RSI≤35 • ADX≤25 • wider band',bbPeriod:20,bbStd:2.5,rsiEntry:35,rsiExit:58,adxMax:25,atrMin:.001,atrMax:.03,emaGapMax:.03,slopeMax:.018,volMin:.25,volMax:1.8,bandEntry:1.00,sl:.025,tp:.045,cooldown:10},
-    {label:'BB40 2σ • RSI≤35 • ADX≤22',bbPeriod:40,bbStd:2,rsiEntry:35,rsiExit:58,adxMax:22,atrMin:.001,atrMax:.025,emaGapMax:.025,slopeMax:.015,volMin:.30,volMax:1.5,bandEntry:1.00,sl:.02,tp:.04,cooldown:10}
+    {label:'BB20 2σ • RSI≤38 • ADX≤28 • near lower band',bbPeriod:20,bbStd:2,rsiEntry:38,rsiExit:55,adxMax:28,atrMin:.0006,atrMax:.035,emaGapMax:.035,slopeMax:.022,volMin:.15,volMax:2.5,bandEntry:1.012,sl:.02,tp:.035,cooldown:4},
+    {label:'BB20 2σ • RSI≤40 • ADX≤30 • relaxed volume',bbPeriod:20,bbStd:2,rsiEntry:40,rsiExit:58,adxMax:30,atrMin:.0005,atrMax:.04,emaGapMax:.04,slopeMax:.025,volMin:.10,volMax:3.0,bandEntry:1.015,sl:.02,tp:.035,cooldown:4},
+    {label:'BB20 2.2σ • RSI≤40 • ADX≤28',bbPeriod:20,bbStd:2.2,rsiEntry:40,rsiExit:58,adxMax:28,atrMin:.0005,atrMax:.04,emaGapMax:.04,slopeMax:.025,volMin:.10,volMax:2.8,bandEntry:1.015,sl:.0225,tp:.04,cooldown:5},
+    {label:'BB30 2σ • RSI≤40 • ADX≤30',bbPeriod:30,bbStd:2,rsiEntry:40,rsiExit:58,adxMax:30,atrMin:.0005,atrMax:.04,emaGapMax:.04,slopeMax:.025,volMin:.10,volMax:3.0,bandEntry:1.015,sl:.02,tp:.04,cooldown:5},
+    {label:'BB30 2σ • RSI≤42 • ADX≤32 • broad range',bbPeriod:30,bbStd:2,rsiEntry:42,rsiExit:60,adxMax:32,atrMin:.0004,atrMax:.045,emaGapMax:.045,slopeMax:.03,volMin:.08,volMax:3.5,bandEntry:1.02,sl:.02,tp:.035,cooldown:4},
+    {label:'BB20 1.8σ • RSI≤40 • ADX≤28',bbPeriod:20,bbStd:1.8,rsiEntry:40,rsiExit:58,adxMax:28,atrMin:.0005,atrMax:.04,emaGapMax:.04,slopeMax:.025,volMin:.10,volMax:3.0,bandEntry:1.01,sl:.018,tp:.03,cooldown:4},
+    {label:'BB20 2σ • RSI≤42 • ADX≤25 • lower-band zone',bbPeriod:20,bbStd:2,rsiEntry:42,rsiExit:60,adxMax:25,atrMin:.0005,atrMax:.035,emaGapMax:.035,slopeMax:.02,volMin:.10,volMax:2.5,bandEntry:1.02,sl:.018,tp:.032,cooldown:4},
+    {label:'BB40 2σ • RSI≤40 • ADX≤30',bbPeriod:40,bbStd:2,rsiEntry:40,rsiExit:60,adxMax:30,atrMin:.0005,atrMax:.04,emaGapMax:.04,slopeMax:.025,volMin:.10,volMax:3.0,bandEntry:1.015,sl:.022,tp:.04,cooldown:6}
   ];
 
   const barsPerDay=tf==='1h'?24:6,wd=Number(document.getElementById('windowDays').value)||30,testBars=wd*barsPerDay;
@@ -298,7 +298,7 @@ function runLab(){
     <td class="${x.sample?'good':'neutral'}">${x.sample?'OK':'LOW SAMPLE'}</td>
   </tr>`).join('');
 
-  document.getElementById('status').textContent='V8 mean-reversion lab complete across '+windows.length+' rolling windows.';
+  document.getElementById('status').textContent='V9 mean-reversion lab complete across '+windows.length+' rolling windows.';
 }
 </script>
 </body>
