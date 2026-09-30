@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "mode": "paper",
+  "symbol": "BTCPHP",
+  "timeframe": "4h",
+  "starting_balance": 100000,
+  "cash": 100000,
+  "btc": 0,
+  "position": null,
+  "realized_pnl": 0,
+  "fees_paid": 0,
+  "last_processed": null,
+  "last_price": null,
+  "last_signal": "WAIT",
+  "updated_at": null,
+  "trades": []
+}
