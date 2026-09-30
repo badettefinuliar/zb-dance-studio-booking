@@ -1,4 +1,4 @@
-name: Refresh Coins.ph BTC Data
+name: Refresh Coins.ph BTC OHLC Data
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/refresh-coins-data.yml"
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,18 +19,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch Coins.ph candles
+      - name: Fetch 1Y Coins.ph BTCPHP OHLC
         shell: bash
         run: |
-          mkdir -p trading-bot/data
-          curl --fail --silent --show-error             "https://api.pro.coins.ph/openapi/quote/v1/klines?symbol=BTCPHP&interval=15m&limit=1000"             -o trading-bot/data/btcphp-15m.json
           python - <<'PY'
-          import json
-          p="trading-bot/data/btcphp-15m.json"
-          data=json.load(open(p,encoding="utf-8"))
-          if not isinstance(data,list) or len(data)<100:
-              raise SystemExit("Coins.ph returned invalid or insufficient kline data")
-          print("Fetched",len(data),"candles")
+          import json, time, urllib.parse, urllib.request
+          from pathlib import Path
+
+          BASE="https://api.pro.coins.ph/openapi/quote/v1/klines"
+          SYMBOL="BTCPHP"
+          now=int(time.time()*1000)
+          start=now-366*24*60*60*1000
+          intervals={"1h":60*60*1000,"4h":4*60*60*1000}
+          Path("trading-bot/data").mkdir(parents=True,exist_ok=True)
+
+          def fetch(interval, step_ms):
+              rows=[]
+              cursor=start
+              chunk_bars=900
+              while cursor < now:
+                  end=min(cursor + chunk_bars*step_ms - 1, now)
+                  qs=urllib.parse.urlencode({
+                      "symbol":SYMBOL,
+                      "interval":interval,
+                      "startTime":cursor,
+                      "endTime":end,
+                      "limit":1000,
+                  })
+                  req=urllib.request.Request(BASE+"?"+qs, headers={"User-Agent":"Mozilla/5.0"})
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      data=json.load(resp)
+                  if not isinstance(data,list):
+                      raise RuntimeError(f"Unexpected response for {interval}: {data}")
+                  rows.extend(data)
+                  cursor=end+1
+                  time.sleep(0.15)
+              by_time={int(r[0]):r for r in rows if isinstance(r,list) and len(r)>=6}
+              out=[by_time[k] for k in sorted(by_time)]
+              if len(out)<100:
+                  raise RuntimeError(f"Too few {interval} candles: {len(out)}")
+              return out
+
+          for interval,step in intervals.items():
+              data=fetch(interval,step)
+              path=Path(f"trading-bot/data/btcphp-{interval}.json")
+              path.write_text(json.dumps(data,separators=(",",":")),encoding="utf-8")
+              print(interval, len(data), "candles")
           PY
 
       - name: Commit refreshed data
@@ -38,7 +72,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trading-bot/data/btcphp-15m.json
+          git add trading-bot/data/btcphp-1h.json trading-bot/data/btcphp-4h.json
           git diff --cached --quiet && exit 0
-          git commit -m "Refresh Coins.ph BTC data"
+          git commit -m "Refresh Coins.ph BTC OHLC data"
           git push
