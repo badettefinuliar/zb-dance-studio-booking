@@ -91,7 +91,7 @@ table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;bor
   <div class="card">
     <h2>How to Read This</h2>
     <div class="note">
-      V6 tests each strategy across separate 30-day out-of-sample windows instead of relying on one lucky period. Consistency score = 50% positive-window rate + 30% rate of beating Buy & Hold + 20% rate of profit factor above 1.0. Treat this as research, not a guarantee of future performance.
+      V6 tests each strategy across separate 30-day out-of-sample windows instead of relying on one lucky period. Consistency score = 50% positive-window rate + 30% rate of beating Buy & Hold + 20% rate of profit factor above 1.0.
     </div>
   </div>
 </div>
@@ -327,7 +327,6 @@ function simulate(data,cfg){
 
 function runLab(){
   if(!marketData.length){setStatus('Load market data first.');return}
-
   const configs=[
     {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 45–60',rsiMin:45,rsiMax:60,sl:0.025,tp:0.05},
     {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 40–58',rsiMin:40,rsiMax:58,sl:0.03,tp:0.06},
@@ -345,17 +344,15 @@ function runLab(){
   const testDays=30, stepDays=30;
   const first=marketData[0].time, last=marketData[marketData.length-1].time;
   const windows=[];
-  let testStart=first+trainDays*DAY;
 
-  while(testStart+testDays*DAY<=last+DAY){
+  for(let testStart=first+trainDays*DAY; testStart<last; testStart+=stepDays*DAY){
     const trainStart=testStart-trainDays*DAY;
     const testEnd=Math.min(testStart+testDays*DAY,last+1);
     const train=marketData.filter(x=>x.time>=trainStart && x.time<testStart);
     const test=marketData.filter(x=>x.time>=testStart && x.time<testEnd);
-    if(train.length>=300 && test.length>=250){
+    if(train.length>=300 && test.length>=200){
       windows.push({train,test,hold:test.length>1?((test[test.length-1].close/test[0].close)-1)*100:0});
     }
-    testStart+=stepDays*DAY;
   }
 
   if(!windows.length){setStatus('Not enough detailed data for rolling windows. Try 180 Days or 1 Year.');return}
