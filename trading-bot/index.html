@@ -35,7 +35,7 @@ canvas{width:100%;height:320px;background:#081321;border-radius:14px;border:1px 
       <h2>Strategy Settings</h2>
       <div class="controls">
         <div><label>Symbol</label><input id="symbol" value="BTCPHP" /></div>
-        <div><label>Interval</label><select id="interval"><option value="15m" selected>15 minutes</option><option value="5m">5 minutes</option><option value="1h">1 hour</option><option value="4h">4 hours</option></select></div>
+        <div><label>Interval</label><select id="interval"><option value="15m" selected>15 minutes</option></select></div>
         <div><label>Candles</label><input id="limit" type="number" min="200" max="1000" value="1000" /></div>
         <div><label>Starting Balance (₱)</label><input id="balance" type="number" min="100" step="100" value="100000" /></div>
         <div><label>Risk per Trade (%)</label><input id="riskPct" type="number" min="0.1" max="5" step="0.1" value="1" /></div>
@@ -65,7 +65,7 @@ canvas{width:100%;height:320px;background:#081321;border-radius:14px;border:1px 
     <div class="card">
       <h2>Equity Curve</h2>
       <canvas id="chart" width="900" height="480"></canvas>
-      <div class="note">If the live Coins.ph request is blocked by your browser/network, use <b>Run Demo Data</b> so the strategy engine can still be tested.</div>
+      <div class="note">Coins.ph data is refreshed automatically by GitHub every 15 minutes, so the browser no longer connects directly to the exchange API.</div>
     </div>
   </div>
   <div class="card" style="margin-top:16px">
@@ -93,13 +93,13 @@ async function runBacktest(){
     const symbol=document.getElementById('symbol').value.trim().toUpperCase()||'BTCPHP';
     const interval=document.getElementById('interval').value;
     const limit=Math.max(200,Math.min(1000,Number(document.getElementById('limit').value)||1000));
-    const url=`https://api.pro.coins.ph/openapi/quote/v1/klines?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}&limit=${limit}`;
-    const res=await fetch(url);if(!res.ok)throw new Error('Market data request failed');
+    const url='./data/btcphp-15m.json?ts='+Date.now();
+    const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error('Saved market data not ready yet');
     const raw=await res.json();if(!Array.isArray(raw)||raw.length<100)throw new Error('Not enough candles');
     const candles=raw.map(k=>({time:Number(k[0]),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4]),volume:Number(k[5])}));
-    backtest(candles);setStatus(`Loaded ${candles.length} ${interval} Coins.ph candles for ${symbol}. Backtest complete.`);
+    backtest(candles);setStatus(`Loaded ${candles.length} saved Coins.ph 15-minute candles for ${symbol}. Backtest complete.`);
   }catch(err){
-    setStatus('Could not load live Coins.ph market data in this browser. Click “Run Demo Data” to test the strategy engine.');
+    setStatus('Coins.ph data file is not ready yet. Please try again in a minute.');
   }finally{btn.disabled=false}
 }
 function loadDemo(){
