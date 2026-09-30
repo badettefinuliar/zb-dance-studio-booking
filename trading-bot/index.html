@@ -64,16 +64,21 @@ table{width:100%;border-collapse:collapse;min-width:760px}th,td{padding:9px;bord
 
   <div id="passive" class="tab">
     <div class="card">
-      <h2>Passive Benchmark</h2>
+      <h2>Passive Benchmark — Fair Comparison</h2>
       <button class="action" onclick="loadData()">Load Coins.ph 4H Data</button>
       <div id="status" class="status"></div>
       <div class="metrics" style="margin-top:12px">
-        <div class="metric"><small>1Y Buy & Hold</small><b id="hold">—</b></div>
+        <div class="metric"><small>Total Cash Budget</small><b id="budget">—</b></div>
+        <div class="metric"><small>1Y Buy & Hold Return</small><b id="hold">—</b></div>
         <div class="metric"><small>Monthly DCA Return</small><b id="dca">—</b></div>
-        <div class="metric"><small>Trend-Filtered DCA</small><b id="tdca">—</b></div>
-        <div class="metric"><small>Latest BTC/PHP</small><b id="price">₱—</b></div>
+        <div class="metric"><small>Trend-Filtered DCA Return</small><b id="tdca">—</b></div>
+        <div class="metric"><small>Buy & Hold Final Value</small><b id="holdValue">—</b></div>
+        <div class="metric"><small>DCA Final Value</small><b id="dcaValue">—</b></div>
+        <div class="metric"><small>Trend DCA Final Value</small><b id="tdcaValue">—</b></div>
+        <div class="metric"><small>Trend DCA Idle Cash</small><b id="idleCash">—</b></div>
+        <div class="metric"><small>Latest BTC/PHP</small><b id="price">—</b></div>
       </div>
-      <div class="note">DCA here is a research benchmark using equal monthly contributions. Trend-filtered DCA only buys when price is above EMA200. It does not place orders.</div>
+      <div class="note">All three use the same total cash budget. Monthly DCA contributes ₱10,000 per schedule. Trend-filtered DCA keeps skipped contributions as cash when BTC is below EMA200. Each BTC purchase includes 0.10% fee + 0.05% slippage in this research comparison.</div>
     </div>
   </div>
 
@@ -132,24 +137,62 @@ async function loadData(){
 function computeBenchmarks(){
   const close=data.map(x=>x.close),e200=ema(close,200),last=data.length-1;
   const oneYearBars=Math.min(6*365,data.length-1),start=data.length-1-oneYearBars;
-  const hold=(close[last]/close[start]-1)*100;
-  document.getElementById('hold').textContent=hold.toFixed(2)+'%';
-  document.getElementById('price').textContent=peso(close[last]);
-
   const monthMs=30*24*3600*1000;
-  let next=data[start].time,invested=0,btc=0,btcTrend=0,investedTrend=0;
+  const contribution=10000;
+  const fee=0.001;
+  const slip=0.0005;
+
+  const schedule=[];
+  let next=data[start].time;
   for(let i=start;i<=last;i++){
     if(data[i].time>=next){
-      const contribution=10000;
-      invested+=contribution;btc+=contribution/close[i];
-      if(e200[i]!=null && close[i]>e200[i]){investedTrend+=contribution;btcTrend+=contribution/close[i]}
+      schedule.push(i);
       next+=monthMs;
     }
   }
-  const dcaValue=btc*close[last],dcaRet=invested?((dcaValue/invested)-1)*100:0;
-  const tdcaValue=btcTrend*close[last],tdcaRet=investedTrend?((tdcaValue/investedTrend)-1)*100:0;
+
+  const totalBudget=schedule.length*contribution;
+
+  // Buy & Hold: deploy the same total budget at the beginning.
+  const holdEntry=close[start]*(1+slip);
+  const holdNetCash=totalBudget*(1-fee);
+  const holdBTC=holdNetCash/holdEntry;
+  const holdFinal=holdBTC*close[last];
+  const holdRet=totalBudget?((holdFinal/totalBudget)-1)*100:0;
+
+  // Plain DCA: deploy one equal contribution at every scheduled date.
+  let dcaBTC=0;
+  for(const i of schedule){
+    const net=contribution*(1-fee);
+    const entry=close[i]*(1+slip);
+    dcaBTC+=net/entry;
+  }
+  const dcaFinal=dcaBTC*close[last];
+  const dcaRet=totalBudget?((dcaFinal/totalBudget)-1)*100:0;
+
+  // Trend DCA: same budget and schedule, but skipped buys stay as cash.
+  let trendBTC=0, idleCash=0;
+  for(const i of schedule){
+    if(e200[i]!=null && close[i]>e200[i]){
+      const net=contribution*(1-fee);
+      const entry=close[i]*(1+slip);
+      trendBTC+=net/entry;
+    }else{
+      idleCash+=contribution;
+    }
+  }
+  const trendFinal=trendBTC*close[last]+idleCash;
+  const trendRet=totalBudget?((trendFinal/totalBudget)-1)*100:0;
+
+  document.getElementById('budget').textContent=peso(totalBudget);
+  document.getElementById('hold').textContent=holdRet.toFixed(2)+'%';
   document.getElementById('dca').textContent=dcaRet.toFixed(2)+'%';
-  document.getElementById('tdca').textContent=tdcaRet.toFixed(2)+'%';
+  document.getElementById('tdca').textContent=trendRet.toFixed(2)+'%';
+  document.getElementById('holdValue').textContent=peso(holdFinal);
+  document.getElementById('dcaValue').textContent=peso(dcaFinal);
+  document.getElementById('tdcaValue').textContent=peso(trendFinal);
+  document.getElementById('idleCash').textContent=peso(idleCash);
+  document.getElementById('price').textContent=peso(close[last]);
 }
 
 function computeSignal(){
