@@ -4,14 +4,186 @@
   "symbol": "BTCPHP",
   "timeframe": "4h",
   "starting_balance": 100000,
-  "cash": 100000,
+  "cash": 94639.84373470735,
   "btc": 0,
   "position": null,
-  "realized_pnl": 0,
-  "fees_paid": 0,
-  "last_processed": null,
-  "last_price": null,
+  "realized_pnl": -5360.156265292633,
+  "fees_paid": 1647.114539392438,
+  "last_processed": 1790726400000,
+  "last_price": 5218453.7,
   "last_signal": "WAIT",
-  "updated_at": null,
-  "trades": []
+  "updated_at": "2026-09-30T03:44:55.885704+00:00",
+  "trades": [
+    {
+      "entry_time": 1767628800000,
+      "exit_time": 1767715200000,
+      "entry_price": 5571702.6591,
+      "exit_price": 5472309.722789197,
+      "qty": 0.010346032076156284,
+      "pnl": -1142.5842135674102,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1768334400000,
+      "exit_time": 1768564800000,
+      "entry_price": 5659527.84975,
+      "exit_price": 5630392.725339659,
+      "qty": 0.008280850717222326,
+      "pnl": -334.7537627613565,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1773604800000,
+      "exit_time": 1773835200000,
+      "entry_price": 4341872.4513,
+      "exit_price": 4351098.836824109,
+      "qty": 0.00949146260569341,
+      "pnl": 5.0628812741997535,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1775808000000,
+      "exit_time": 1775952000000,
+      "entry_price": 4320680.560649999,
+      "exit_price": 4271299.554226737,
+      "qty": 0.008692029812512667,
+      "pnl": -503.9029273099077,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1776110400000,
+      "exit_time": 1776542400000,
+      "entry_price": 4480283.122049999,
+      "exit_price": 4508683.497007821,
+      "qty": 0.008168489681179059,
+      "pnl": 158.56188871234917,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1776859200000,
+      "exit_time": 1777075200000,
+      "entry_price": 4774448.8314,
+      "exit_price": 4720009.8145,
+      "qty": 0.007856920583938477,
+      "pnl": -502.32024001930404,
+      "reason": "Bull regime ended"
+    },
+    {
+      "entry_time": 1777233600000,
+      "exit_time": 1777291200000,
+      "entry_price": 4786058.6334,
+      "exit_price": 4696949.7670893,
+      "qty": 0.011258753530946264,
+      "pnl": -1110.0216175272071,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1777752000000,
+      "exit_time": 1777852800000,
+      "entry_price": 4833137.9613,
+      "exit_price": 4802025.1854421245,
+      "qty": 0.011330995476195782,
+      "pnl": -461.7147125256233,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1777852800000,
+      "exit_time": 1777881600000,
+      "entry_price": 4934253.59385,
+      "exit_price": 4838118.3239811575,
+      "qty": 0.010255383525525153,
+      "pnl": -1086.1234848062668,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1777896000000,
+      "exit_time": 1778155200000,
+      "entry_price": 4938094.11315,
+      "exit_price": 4868512.862448802,
+      "qty": 0.00831990039481361,
+      "pnl": -660.4990684285804,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1778515200000,
+      "exit_time": 1778616000000,
+      "entry_price": 5010538.71735,
+      "exit_price": 4953865.528150001,
+      "qty": 0.010522795027281491,
+      "pnl": -701.2137369382981,
+      "reason": "Bull regime ended"
+    },
+    {
+      "entry_time": 1778774400000,
+      "exit_time": 1778817600000,
+      "entry_price": 5020448.46975,
+      "exit_price": 4988987.8582,
+      "qty": 0.00839635948374916,
+      "pnl": -348.1974297915658,
+      "reason": "Bull regime ended"
+    },
+    {
+      "entry_time": 1784606400000,
+      "exit_time": 1784808000000,
+      "entry_price": 4087094.1258,
+      "exit_price": 4021562.8258065917,
+      "qty": 0.011434528271785331,
+      "pnl": -842.0381696208278,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1787140800000,
+      "exit_time": 1787457600000,
+      "entry_price": 4232114.89995,
+      "exit_price": 4679342.653370737,
+      "qty": 0.010138438607797541,
+      "pnl": 4443.842856449024,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1787572800000,
+      "exit_time": 1787745600000,
+      "entry_price": 4875115.5396,
+      "exit_price": 4793036.091096221,
+      "qty": 0.006590120463419782,
+      "pnl": -604.6277371158612,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1787832000000,
+      "exit_time": 1787932800000,
+      "entry_price": 4974418.66635,
+      "exit_price": 4861513.6966767395,
+      "qty": 0.0070471138820623405,
+      "pnl": -864.9691146367768,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1788451200000,
+      "exit_time": 1788523200000,
+      "entry_price": 5107180.7142,
+      "exit_price": 4977155.780906525,
+      "qty": 0.007483782390862253,
+      "pnl": -1048.5472860403534,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1789732800000,
+      "exit_time": 1789977600000,
+      "entry_price": 5075727.7956,
+      "exit_price": 5160259.512448368,
+      "qty": 0.007414359613612778,
+      "pnl": 550.8552565676437,
+      "reason": "ATR stop/trail"
+    },
+    {
+      "entry_time": 1789977600000,
+      "exit_time": 1790164800000,
+      "entry_price": 5327800.9692,
+      "exit_price": 5297676.901186491,
+      "qty": 0.007532983265166388,
+      "pnl": -306.96564720651077,
+      "reason": "ATR stop/trail"
+    }
+  ]
 }
