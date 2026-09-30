@@ -2,416 +2,277 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BTC/PHP Strategy Lab v6</title>
+<title>BTC/PHP Strategy Lab v7</title>
 <style>
 :root{--bg:#07111f;--card:#0f1d30;--line:#263b58;--text:#eef6ff;--muted:#9eb0c8;--green:#55d6a2;--yellow:#ffd166;--red:#ff7b7b;--blue:#77a7ff}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#06101b,#0b1728);color:var(--text);font-family:Inter,system-ui,Arial;padding:18px}
-.wrap{max-width:1220px;margin:auto}.hero{padding:18px 2px}.hero h1{margin:0;font-size:clamp(30px,6vw,50px)}.hero p{color:var(--muted);margin:8px 0}
+.wrap{max-width:1240px;margin:auto}.hero{padding:18px 2px}.hero h1{margin:0;font-size:clamp(30px,6vw,50px)}.hero p{color:var(--muted);margin:8px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 16px 50px rgba(0,0,0,.25)}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:850px){.grid{grid-template-columns:1fr}}
 .controls{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:760px){.controls{grid-template-columns:1fr 1fr}}@media(max-width:520px){.controls{grid-template-columns:1fr}}
 label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}input,select{width:100%;padding:11px;border-radius:11px;border:1px solid #395371;background:#081321;color:white}
 button{padding:11px 14px;border:0;border-radius:11px;font-weight:800;cursor:pointer}.primary{background:var(--green);color:#062017}.secondary{background:#233753;color:#fff}.blue{background:var(--blue);color:#081321}
-.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:700px){.metrics{grid-template-columns:1fr 1fr}}
+.actions,.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.tabs button.active{outline:2px solid var(--green)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media(max-width:700px){.metrics{grid-template-columns:1fr 1fr}}
 .metric{background:#14243a;border:1px solid #29405d;border-radius:14px;padding:13px}.metric small{display:block;color:var(--muted);margin-bottom:6px}.metric b{font-size:20px}
 .note{font-size:12px;color:var(--muted);line-height:1.5;background:#0a1626;border:1px solid #243a56;padding:11px;border-radius:11px;margin-top:12px}.status{min-height:20px;color:#c7f1df;margin-top:10px;font-size:13px}
-table{width:100%;border-collapse:collapse;min-width:1050px}th,td{padding:9px;border-bottom:1px solid #223650;text-align:right;font-size:12px}th:first-child,td:first-child{text-align:left}.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:1120px}th,td{padding:9px;border-bottom:1px solid #223650;text-align:right;font-size:12px}th:first-child,td:first-child{text-align:left}.table-wrap{overflow:auto}
 .good{color:var(--green)}.bad{color:var(--red)}.neutral{color:var(--yellow)}.rank{display:inline-block;min-width:26px;text-align:center;padding:3px 7px;border-radius:999px;background:#203553;color:#dfeaff;font-weight:800}
-.tabs{display:flex;gap:8px;flex-wrap:wrap}.tabs button.active{outline:2px solid var(--green)}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#203553;font-size:11px;font-weight:800}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hero">
-    <h1>BTC/PHP Strategy Lab v6</h1>
-    <p>Rolling walk-forward research across multiple market windows. No live order execution.</p>
+    <h1>BTC/PHP Strategy Lab v7</h1>
+    <p>True OHLC + ATR + market-regime testing using Coins.ph BTCPHP candles. No live order execution.</p>
   </div>
 
   <div class="grid">
     <div class="card">
-      <h2>Market History</h2>
+      <h2>OHLC Market Data</h2>
       <div class="tabs">
-        <button class="secondary active" id="b90" onclick="setRange(90)">90 Days</button>
-        <button class="secondary" id="b180" onclick="setRange(180)">180 Days</button>
-        <button class="secondary" id="b365" onclick="setRange(365)">1 Year</button>
+        <button id="tf1h" class="secondary active" onclick="setTF('1h')">1 Hour</button>
+        <button id="tf4h" class="secondary" onclick="setTF('4h')">4 Hours</button>
       </div>
       <div class="actions">
-        <button class="primary" onclick="loadMarket()">Load BTC/PHP Data</button>
-        <button class="secondary" onclick="runDemo()">Run Demo</button>
+        <button class="primary" onclick="loadOHLC()">Load Coins.ph OHLC</button>
+        <button class="secondary" onclick="runDemo()">Run Demo OHLC</button>
       </div>
       <div id="status" class="status"></div>
-      <div class="note">The selected period is loaded in shorter chunks to preserve more detailed price history, then split 70% training / 30% out-of-sample.</div>
+      <div class="note">Data is fetched by GitHub in the background and stored on this same site, so the browser does not call Coins.ph directly.</div>
     </div>
 
     <div class="card">
-      <h2>Assumptions</h2>
+      <h2>Research Assumptions</h2>
       <div class="controls">
         <div><label>Starting Balance (₱)</label><input id="balance" type="number" value="100000"></div>
         <div><label>Trading Fee (%)</label><input id="fee" type="number" step="0.01" value="0.10"></div>
         <div><label>Slippage (%)</label><input id="slip" type="number" step="0.01" value="0.05"></div>
-        <div><label>Training Split (%)</label><input id="split" type="number" min="50" max="90" value="70"></div>
+        <div><label>OOS Window (days)</label><input id="windowDays" type="number" min="15" max="60" value="30"></div>
       </div>
-      <div class="actions">
-        <button class="blue" onclick="runLab()">Run Rolling Walk-Forward Lab</button>
-      </div>
-      <div class="note">Fees and slippage are included in each simulated trade. Results are research estimates only and do not guarantee future performance.</div>
+      <div class="actions"><button class="blue" onclick="runLab()">Run V7 Regime Lab</button></div>
+      <div class="note">Long-only spot-style simulation. Breakout and pullback strategies trade only in bull regimes; mean reversion trades only in sideways regimes.</div>
     </div>
   </div>
 
   <div class="card">
     <div class="metrics">
-      <div class="metric"><small>History Points</small><b id="points">—</b></div>
-      <div class="metric"><small>Training Points</small><b id="trainPts">—</b></div>
-      <div class="metric"><small>Out-of-Sample Points</small><b id="testPts">—</b></div>
-      <div class="metric"><small>Current BTC/PHP</small><b id="price">₱—</b></div>
-      <div class="metric"><small>OOS Buy & Hold</small><b id="holdRet">—</b></div>
-      <div class="metric"><small>Min OOS Trades</small><b>10+</b></div>
-      <div class="metric"><small>Entry Style</small><b>Trend + RSI</b></div>
-      <div class="metric"><small>Cooldown</small><b>8 bars</b></div>
+      <div class="metric"><small>Candles Loaded</small><b id="points">—</b></div>
+      <div class="metric"><small>Latest BTC/PHP</small><b id="price">₱—</b></div>
+      <div class="metric"><small>Current Regime</small><b id="regime">—</b></div>
+      <div class="metric"><small>ATR 14</small><b id="atr">—</b></div>
+      <div class="metric"><small>Bull Candles</small><b id="bullPct">—</b></div>
+      <div class="metric"><small>Sideways Candles</small><b id="sidePct">—</b></div>
+      <div class="metric"><small>Bear Candles</small><b id="bearPct">—</b></div>
+      <div class="metric"><small>Avg Buy & Hold / Window</small><b id="holdRet">—</b></div>
     </div>
   </div>
 
   <div class="card">
-    <h2>Rolling Walk-Forward Results</h2>
+    <h2>V7 Rolling Regime Results</h2>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Rank</th><th>Family</th><th>Setup</th><th>Windows</th>
-            <th>Consistency</th><th>Avg OOS Return</th><th>Median OOS</th>
-            <th>Positive Windows</th><th>Beat Hold</th><th>Worst DD</th>
-            <th>Avg Profit Factor</th><th>Total OOS Trades</th><th>Sample Check</th>
+            <th>Rank</th><th>Family</th><th>Setup</th><th>Allowed Regime</th><th>Windows</th>
+            <th>Consistency</th><th>Avg OOS Return</th><th>Median OOS</th><th>Positive Windows</th>
+            <th>Beat Hold</th><th>Worst DD</th><th>Avg PF</th><th>Total Trades</th><th>Sample</th>
           </tr>
         </thead>
-        <tbody id="lab"><tr><td colspan="13" style="text-align:center;color:#72859d">Load data, then run Rolling Walk-Forward Lab.</td></tr></tbody>
+        <tbody id="lab"><tr><td colspan="14" style="text-align:center;color:#72859d">Load OHLC data, then run V7 Regime Lab.</td></tr></tbody>
       </table>
     </div>
   </div>
 
   <div class="card">
-    <h2>How to Read This</h2>
+    <h2>What V7 Changes</h2>
     <div class="note">
-      V6 tests each strategy across separate 30-day out-of-sample windows instead of relying on one lucky period. Consistency score = 50% positive-window rate + 30% rate of beating Buy & Hold + 20% rate of profit factor above 1.0.
+      ATR now uses real High/Low/Close candles. Regimes use EMA50 vs EMA200 plus EMA200 slope: bull when trend is clearly rising, bear when clearly falling, otherwise sideways. This reduces the mistake of forcing one strategy to trade in every type of market.
     </div>
   </div>
 </div>
 
 <script>
-let days=90, marketData=[];
+let tf='1h', ohlc=[];
 
-function setRange(d){
-  days=d;
-  ['b90','b180','b365'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  document.getElementById(d===90?'b90':d===180?'b180':'b365').classList.add('active');
-  setStatus('Selected '+d+' days. Click Load BTC/PHP Data.');
+function setTF(v){
+  tf=v;
+  document.getElementById('tf1h').classList.toggle('active',v==='1h');
+  document.getElementById('tf4h').classList.toggle('active',v==='4h');
+  document.getElementById('status').textContent='Selected '+v.toUpperCase()+'. Click Load Coins.ph OHLC.';
 }
-
+const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{maximumFractionDigits:2});
 function ema(v,p){const o=Array(v.length).fill(null),k=2/(p+1);let s=0;for(let i=0;i<v.length;i++){if(i<p){s+=v[i];if(i===p-1)o[i]=s/p}else o[i]=v[i]*k+o[i-1]*(1-k)}return o}
 function rsi(v,p=14){const o=Array(v.length).fill(null);if(v.length<=p)return o;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>=0)g+=d;else l-=d}let ag=g/p,al=l/p;o[p]=al===0?100:100-100/(1+ag/al);for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1],gg=Math.max(d,0),ll=Math.max(-d,0);ag=(ag*(p-1)+gg)/p;al=(al*(p-1)+ll)/p;o[i]=al===0?100:100-100/(1+ag/al)}return o}
-const peso=n=>'₱'+Number(n).toLocaleString('en-PH',{maximumFractionDigits:2});
-function setStatus(t){document.getElementById('status').textContent=t}
+function atr(data,p=14){
+  const tr=Array(data.length).fill(null),out=Array(data.length).fill(null);
+  for(let i=1;i<data.length;i++) tr[i]=Math.max(data[i].high-data[i].low,Math.abs(data[i].high-data[i-1].close),Math.abs(data[i].low-data[i-1].close));
+  let s=0;
+  for(let i=1;i<data.length;i++){s+=tr[i]||0;if(i>p)s-=tr[i-p]||0;if(i>=p)out[i]=s/p}
+  return out;
+}
+function highest(v,p,i){let m=-Infinity;for(let k=Math.max(0,i-p);k<i;k++)m=Math.max(m,v[k]);return m}
+function median(a){const b=[...a].sort((x,y)=>x-y),m=Math.floor(b.length/2);return b.length%2?b[m]:(b[m-1]+b[m])/2}
 
-async function loadMarket(){
-  setStatus('Loading detailed '+days+'-day BTC/PHP history in chunks...');
+function indicators(data){
+  const close=data.map(x=>x.close), e20=ema(close,20),e50=ema(close,50),e200=ema(close,200),rr=rsi(close,14),at=atr(data,14);
+  const regime=Array(data.length).fill('sideways');
+  for(let i=220;i<data.length;i++){
+    const slope=e200[i]-e200[i-20];
+    if(e50[i]>e200[i] && close[i]>e200[i] && slope>0)regime[i]='bull';
+    else if(e50[i]<e200[i] && close[i]<e200[i] && slope<0)regime[i]='bear';
+  }
+  return {close,e20,e50,e200,rr,at,regime};
+}
+
+async function loadOHLC(){
+  const status=document.getElementById('status');
+  status.textContent='Loading saved Coins.ph '+tf.toUpperCase()+' OHLC...';
   try{
-    const now=Math.floor(Date.now()/1000);
-    const start=now-days*86400;
-    const chunkSeconds=80*86400;
-    let all=[];
-    let from=start;
-    let part=1;
-    const totalParts=Math.ceil((now-start)/chunkSeconds);
-
-    while(from<now){
-      const to=Math.min(from+chunkSeconds,now);
-      setStatus('Loading market data chunk '+part+' of '+totalParts+'...');
-      const u='https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=php&from='+from+'&to='+to;
-      const r=await fetch(u,{cache:'no-store'});
-      if(!r.ok)throw new Error('market source blocked');
-      const j=await r.json();
-      if(!j.prices||!j.prices.length)throw new Error('empty history chunk');
-      all=all.concat(j.prices);
-      from=to+1;
-      part++;
-      await new Promise(resolve=>setTimeout(resolve,350));
-    }
-
-    const seen=new Map();
-    all.forEach(x=>seen.set(Number(x[0]),Number(x[1])));
-    marketData=[...seen.entries()]
-      .sort((a,b)=>a[0]-b[0])
-      .map(x=>({time:x[0],close:x[1]}));
-
-    if(marketData.length<300)throw new Error('not enough detailed history');
+    const r=await fetch('./data/btcphp-'+tf+'.json?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error('OHLC file not ready');
+    const raw=await r.json();
+    if(!Array.isArray(raw)||raw.length<300)throw new Error('Not enough candles');
+    ohlc=raw.map(k=>({time:Number(k[0]),open:Number(k[1]),high:Number(k[2]),low:Number(k[3]),close:Number(k[4]),volume:Number(k[5])}));
     updateSummary();
     runLab();
-    setStatus('Loaded '+marketData.length+' detailed BTC/PHP price points across '+days+' days.');
+    status.textContent='Loaded '+ohlc.length+' real Coins.ph '+tf.toUpperCase()+' candles.';
   }catch(e){
-    setStatus('Detailed history could not be loaded. Try again shortly, or use a shorter period.');
+    status.textContent='OHLC file is not ready yet. The GitHub fetcher may still be generating it. Try again shortly.';
   }
 }
 
 function runDemo(){
-  const points=days*24;
-  let p=5000000,t=Date.now()-days*24*3600*1000;const data=[];
-  for(let i=0;i<points;i++){p=Math.max(100000,p+(Math.sin(i/70)*10000)+(Math.random()-.495)*22000);data.push({time:t+i*3600*1000,close:p})}
-  marketData=data;updateSummary();runLab();setStatus(days+'-day demo data loaded.');
+  const bars=tf==='1h'?24*365:6*365;
+  let p=5000000,t=Date.now()-bars*(tf==='1h'?3600000:14400000);ohlc=[];
+  for(let i=0;i<bars;i++){
+    const open=p,move=(Math.sin(i/55)*7000)+(Math.random()-.49)*26000,close=Math.max(100000,open+move);
+    const high=Math.max(open,close)+Math.random()*18000,low=Math.min(open,close)-Math.random()*18000;
+    ohlc.push({time:t+i*(tf==='1h'?3600000:14400000),open,high,low,close,volume:1});p=close;
+  }
+  updateSummary();runLab();document.getElementById('status').textContent='Demo OHLC loaded.';
 }
 
 function updateSummary(){
-  const split=Math.floor(marketData.length*((Number(document.getElementById('split').value)||70)/100));
-  document.getElementById('points').textContent=marketData.length;
-  document.getElementById('trainPts').textContent=split;
-  document.getElementById('testPts').textContent=marketData.length-split;
-  document.getElementById('price').textContent=marketData.length?peso(marketData[marketData.length-1].close):'₱—';
+  if(!ohlc.length)return;
+  const ind=indicators(ohlc),i=ohlc.length-1;
+  const counts={bull:0,bear:0,sideways:0};ind.regime.forEach(r=>counts[r]++);
+  document.getElementById('points').textContent=ohlc.length;
+  document.getElementById('price').textContent=peso(ohlc[i].close);
+  document.getElementById('regime').textContent=ind.regime[i].toUpperCase();
+  document.getElementById('atr').textContent=ind.at[i]?peso(ind.at[i]):'—';
+  document.getElementById('bullPct').textContent=(counts.bull/ohlc.length*100).toFixed(1)+'%';
+  document.getElementById('sidePct').textContent=(counts.sideways/ohlc.length*100).toFixed(1)+'%';
+  document.getElementById('bearPct').textContent=(counts.bear/ohlc.length*100).toFixed(1)+'%';
 }
 
-
-function sma(v,p){
-  const o=Array(v.length).fill(null); let s=0;
-  for(let i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p}
-  return o;
-}
-function atrLike(close,p=14){
-  const o=Array(close.length).fill(null), tr=Array(close.length).fill(0);
-  for(let i=1;i<close.length;i++) tr[i]=Math.abs(close[i]-close[i-1]);
-  let s=0;
-  for(let i=0;i<tr.length;i++){s+=tr[i];if(i>=p)s-=tr[i-p];if(i>=p-1)o[i]=s/p}
-  return o;
-}
-function highest(v,p,i){let m=-Infinity;for(let k=Math.max(0,i-p);k<i;k++)m=Math.max(m,v[k]);return m}
-function lowest(v,p,i){let m=Infinity;for(let k=Math.max(0,i-p);k<i;k++)m=Math.min(m,v[k]);return m}
-
-function simulateFamily(data,cfg){
-  const start=Number(document.getElementById('balance').value)||100000;
+function simulateRange(data,ind,cfg,startIdx,endIdx){
+  const startBal=Number(document.getElementById('balance').value)||100000;
   const fee=(Number(document.getElementById('fee').value)||0.10)/100;
   const slip=(Number(document.getElementById('slip').value)||0.05)/100;
-  const close=data.map(d=>d.close), rr=rsi(close,14), e20=ema(close,20), e50=ema(close,50), e200=ema(close,200), at=atrLike(close,14);
-  let bal=start,pos=null,trades=0,wins=0,grossWin=0,grossLoss=0,peak=start,maxDD=0,lastExit=-9999;
-  const cooldown=8;
-  const warm=210;
+  let bal=startBal,pos=null,trades=0,wins=0,grossWin=0,grossLoss=0,peak=startBal,maxDD=0,lastExit=-9999;
 
-  for(let i=warm;i<data.length;i++){
-    const px=close[i];
+  for(let i=Math.max(startIdx,220);i<endIdx;i++){
+    const px=data[i].close,reg=ind.regime[i];
 
     if(pos){
-      const exitPx=px*(1-slip);
-      const move=(exitPx-pos.entry)/pos.entry;
+      const exitPx=px*(1-slip),move=(exitPx-pos.entry)/pos.entry;
       let exit=false;
-
-      if(cfg.family==='Trend Pullback'){
-        if(move<=-cfg.sl || move>=cfg.tp || close[i]<e50[i]) exit=true;
-      } else if(cfg.family==='Breakout ATR'){
-        const atrPct=at[i] ? at[i]/px : 0;
-        if(move<=-(cfg.atrSL*atrPct) || move>=(cfg.atrTP*atrPct) || close[i]<e20[i]) exit=true;
-      } else if(cfg.family==='Mean Reversion'){
-        if(move<=-cfg.sl || move>=cfg.tp || rr[i]>=cfg.rsiExit || close[i]>e20[i]) exit=true;
+      if(cfg.family==='Breakout ATR'){
+        const a=ind.at[i]||0;
+        if(px<=pos.entry-cfg.atrSL*a || px>=pos.entry+cfg.atrTP*a || reg!=='bull')exit=true;
+      }else if(cfg.family==='Trend Pullback'){
+        if(move<=-cfg.sl || move>=cfg.tp || reg!=='bull' || px<ind.e50[i])exit=true;
+      }else if(cfg.family==='Mean Reversion'){
+        if(move<=-cfg.sl || move>=cfg.tp || ind.rr[i]>=cfg.rsiExit || reg!=='sideways')exit=true;
       }
-
       if(exit){
-        const gross=bal*move;
-        const fees=(bal*fee)+(bal*(1+move)*fee);
-        const pnl=gross-fees;
-        bal+=pnl;trades++;
-        if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
-        pos=null;lastExit=i;
+        const gross=bal*move,fees=(bal*fee)+(bal*(1+move)*fee),pnl=gross-fees;
+        bal+=pnl;trades++;if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);pos=null;lastExit=i;
       }
     }
 
-    if(!pos && i-lastExit>=cooldown){
+    if(!pos && i-lastExit>=cfg.cooldown){
       let enter=false;
-      if(cfg.family==='Trend Pullback'){
-        const longTrend=e50[i]>e200[i] && close[i]>e200[i];
-        const pullback=close[i]<=e20[i]*1.01 && close[i]>=e50[i]*0.98;
-        const rsiOk=rr[i]>=cfg.rsiMin && rr[i]<=cfg.rsiMax;
-        const rebound=close[i]>close[i-1];
-        enter=longTrend && pullback && rsiOk && rebound;
-      } else if(cfg.family==='Breakout ATR'){
-        const longTrend=close[i]>e50[i] && e50[i]>e200[i];
-        const breakout=close[i]>highest(close,cfg.lookback,i);
-        const atrOk=at[i] && at[i]/close[i]>=cfg.minAtrPct;
-        enter=longTrend && breakout && atrOk;
-      } else if(cfg.family==='Mean Reversion'){
-        const trendOk=close[i]>e200[i]*0.92;
-        const oversold=rr[i]<=cfg.rsiEntry;
-        const dip=close[i]<e20[i]*(1-cfg.dipPct);
-        const bounce=close[i]>close[i-1];
-        enter=trendOk && oversold && dip && bounce;
+      if(cfg.family==='Breakout ATR'){
+        const breakout=px>highest(ind.close,cfg.lookback,i);
+        const atrPct=ind.at[i]?ind.at[i]/px:0;
+        enter=reg==='bull' && breakout && atrPct>=cfg.minAtrPct;
+      }else if(cfg.family==='Trend Pullback'){
+        const pullback=px<=ind.e20[i]*1.01 && px>=ind.e50[i]*0.98;
+        const rsiOk=ind.rr[i]>=cfg.rsiMin && ind.rr[i]<=cfg.rsiMax;
+        enter=reg==='bull' && pullback && rsiOk && px>data[i-1].close;
+      }else if(cfg.family==='Mean Reversion'){
+        const dip=px<ind.e20[i]*(1-cfg.dipPct);
+        enter=reg==='sideways' && ind.rr[i]<=cfg.rsiEntry && dip && px>data[i-1].close;
       }
-      if(enter) pos={entry:px*(1+slip)};
+      if(enter)pos={entry:px*(1+slip)};
     }
 
-    peak=Math.max(peak,bal);
-    if(peak>0) maxDD=Math.max(maxDD,(peak-bal)/peak);
-  }
-
-  if(pos){
-    const px=close[close.length-1]*(1-slip), move=(px-pos.entry)/pos.entry;
-    const gross=bal*move, fees=(bal*fee)+(bal*(1+move)*fee), pnl=gross-fees;
-    bal+=pnl;trades++;
-    if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
-    peak=Math.max(peak,bal); if(peak>0) maxDD=Math.max(maxDD,(peak-bal)/peak);
-  }
-
-  return {
-    ret:(bal-start)/start*100,
-    dd:maxDD*100,
-    winRate:trades?wins/trades*100:0,
-    trades,
-    pf:grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0)
-  };
-}
-
-function simulate(data,cfg){
-  const start=Number(document.getElementById('balance').value)||100000;
-  const fee=(Number(document.getElementById('fee').value)||0.10)/100;
-  const slip=(Number(document.getElementById('slip').value)||0.05)/100;
-  const sl=cfg.sl/100,tp=cfg.tp/100;
-  const close=data.map(d=>d.close),ef=ema(close,cfg.fast),es=ema(close,cfg.slow),rr=rsi(close,14);
-  let bal=start,pos=null,trades=0,wins=0,grossWin=0,grossLoss=0,peak=start,maxDD=0,lastExit=-9999;
-  const warm=Math.max(cfg.slow,14)+3;
-  const cooldown=8;
-
-  for(let i=warm;i<data.length;i++){
-    const px=close[i];
-
-    if(pos){
-      const effectiveExit=px*(1-slip);
-      const move=(effectiveExit-pos.entry)/pos.entry;
-      let closeTrade=false;
-      if(move<=-sl || move>=tp)closeTrade=true;
-      else if(ef[i]<es[i])closeTrade=true;
-      else if(rr[i]>=78)closeTrade=true;
-
-      if(closeTrade){
-        const gross=bal*move;
-        const fees=(bal*fee)+(bal*(1+move)*fee);
-        const pnl=gross-fees;
-        bal+=pnl;trades++;
-        if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
-        pos=null;
-        lastExit=i;
-      }
-    }
-
-    if(!pos && i-lastExit>=cooldown){
-      const bullish=ef[i]>es[i];
-      const rsiInZone=rr[i]>=cfg.rsiMin && rr[i]<=cfg.rsiMax;
-      const rsiReentry=rr[i-1]<cfg.rsiMin && rr[i]>=cfg.rsiMin;
-      const momentumConfirm=close[i]>close[i-1];
-
-      if(bullish && rsiInZone && (rsiReentry || momentumConfirm)){
-        pos={entry:px*(1+slip)};
-      }
-    }
-
-    peak=Math.max(peak,bal);
-    if(peak>0)maxDD=Math.max(maxDD,(peak-bal)/peak);
-  }
-
-  if(pos){
-    const px=close[close.length-1]*(1-slip),move=(px-pos.entry)/pos.entry,gross=bal*move,fees=(bal*fee)+(bal*(1+move)*fee),pnl=gross-fees;
-    bal+=pnl;trades++;
-    if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
     peak=Math.max(peak,bal);if(peak>0)maxDD=Math.max(maxDD,(peak-bal)/peak);
   }
 
-  return {
-    ret:(bal-start)/start*100,
-    dd:maxDD*100,
-    winRate:trades?wins/trades*100:0,
-    trades,
-    pf:grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0)
-  };
+  if(pos){
+    const px=data[endIdx-1].close*(1-slip),move=(px-pos.entry)/pos.entry,gross=bal*move,fees=(bal*fee)+(bal*(1+move)*fee),pnl=gross-fees;
+    bal+=pnl;trades++;if(pnl>=0){wins++;grossWin+=pnl}else grossLoss+=Math.abs(pnl);
+    peak=Math.max(peak,bal);if(peak>0)maxDD=Math.max(maxDD,(peak-bal)/peak);
+  }
+
+  return {ret:(bal-startBal)/startBal*100,dd:maxDD*100,pf:grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:0),trades,wins};
 }
 
 function runLab(){
-  if(!marketData.length){setStatus('Load market data first.');return}
+  if(!ohlc.length){document.getElementById('status').textContent='Load OHLC data first.';return}
+  const ind=indicators(ohlc);
   const configs=[
-    {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 45–60',rsiMin:45,rsiMax:60,sl:0.025,tp:0.05},
-    {family:'Trend Pullback',label:'EMA50>200, pullback to 20/50, RSI 40–58',rsiMin:40,rsiMax:58,sl:0.03,tp:0.06},
-    {family:'Trend Pullback',label:'EMA50>200, shallow pullback, RSI 50–65',rsiMin:50,rsiMax:65,sl:0.02,tp:0.04},
-    {family:'Breakout ATR',label:'20-bar breakout, ATR 1.5x / 3x',lookback:20,minAtrPct:0.0015,atrSL:1.5,atrTP:3},
-    {family:'Breakout ATR',label:'30-bar breakout, ATR 2x / 4x',lookback:30,minAtrPct:0.0015,atrSL:2,atrTP:4},
-    {family:'Breakout ATR',label:'50-bar breakout, ATR 2x / 3.5x',lookback:50,minAtrPct:0.001,atrSL:2,atrTP:3.5},
-    {family:'Mean Reversion',label:'RSI≤32, 1.5% below EMA20',rsiEntry:32,rsiExit:55,dipPct:0.015,sl:0.025,tp:0.04},
-    {family:'Mean Reversion',label:'RSI≤28, 2% below EMA20',rsiEntry:28,rsiExit:55,dipPct:0.02,sl:0.03,tp:0.05},
-    {family:'Mean Reversion',label:'RSI≤35, 1% below EMA20',rsiEntry:35,rsiExit:58,dipPct:0.01,sl:0.02,tp:0.035}
+    {family:'Breakout ATR',label:'20-bar breakout, 1.5 ATR SL / 3 ATR TP',regime:'BULL',lookback:20,minAtrPct:0.001,atrSL:1.5,atrTP:3,cooldown:6},
+    {family:'Breakout ATR',label:'50-bar breakout, 2 ATR SL / 3.5 ATR TP',regime:'BULL',lookback:50,minAtrPct:0.001,atrSL:2,atrTP:3.5,cooldown:8},
+    {family:'Breakout ATR',label:'80-bar breakout, 2 ATR SL / 4 ATR TP',regime:'BULL',lookback:80,minAtrPct:0.0008,atrSL:2,atrTP:4,cooldown:10},
+    {family:'Trend Pullback',label:'EMA20/50 pullback, RSI 45–60, 2.5%/5%',regime:'BULL',rsiMin:45,rsiMax:60,sl:.025,tp:.05,cooldown:8},
+    {family:'Trend Pullback',label:'EMA20/50 pullback, RSI 40–58, 3%/6%',regime:'BULL',rsiMin:40,rsiMax:58,sl:.03,tp:.06,cooldown:10},
+    {family:'Mean Reversion',label:'RSI≤30, 1.5% below EMA20, 2.5%/4%',regime:'SIDEWAYS',rsiEntry:30,rsiExit:55,dipPct:.015,sl:.025,tp:.04,cooldown:8},
+    {family:'Mean Reversion',label:'RSI≤35, 1% below EMA20, 2%/3.5%',regime:'SIDEWAYS',rsiEntry:35,rsiExit:58,dipPct:.01,sl:.02,tp:.035,cooldown:6}
   ];
 
-  const DAY=86400000;
-  const trainDays=days>=365?90:(days>=180?60:45);
-  const testDays=30, stepDays=30;
-  const first=marketData[0].time, last=marketData[marketData.length-1].time;
+  const barsPerDay=tf==='1h'?24:6,windowDays=Number(document.getElementById('windowDays').value)||30;
+  const testBars=windowDays*barsPerDay,step=testBars;
   const windows=[];
-
-  for(let testStart=first+trainDays*DAY; testStart<last; testStart+=stepDays*DAY){
-    const trainStart=testStart-trainDays*DAY;
-    const testEnd=Math.min(testStart+testDays*DAY,last+1);
-    const train=marketData.filter(x=>x.time>=trainStart && x.time<testStart);
-    const test=marketData.filter(x=>x.time>=testStart && x.time<testEnd);
-    if(train.length>=300 && test.length>=200){
-      windows.push({train,test,hold:test.length>1?((test[test.length-1].close/test[0].close)-1)*100:0});
-    }
+  for(let s=220;s+testBars<=ohlc.length;s+=step){
+    const e=s+testBars,hold=(ohlc[e-1].close/ohlc[s].close-1)*100;
+    windows.push({s,e,hold});
   }
+  if(windows.length<3){document.getElementById('status').textContent='Not enough history for rolling windows.';return}
 
-  if(!windows.length){setStatus('Not enough detailed data for rolling windows. Try 180 Days or 1 Year.');return}
-
-  const holdAvg=windows.reduce((s,w)=>s+w.hold,0)/windows.length;
-  document.getElementById('holdRet').textContent=holdAvg.toFixed(2)+'% avg';
-
-  function median(arr){
-    const a=[...arr].sort((x,y)=>x-y),m=Math.floor(a.length/2);
-    return a.length%2?a[m]:(a[m-1]+a[m])/2;
-  }
+  document.getElementById('holdRet').textContent=(windows.reduce((a,w)=>a+w.hold,0)/windows.length).toFixed(2)+'%';
 
   const rows=configs.map(cfg=>{
-    const results=windows.map(w=>({test:simulateFamily(w.test,cfg),hold:w.hold}));
-    const returns=results.map(r=>r.test.ret);
-    const positive=results.filter(r=>r.test.ret>0).length;
-    const beat=results.filter(r=>r.test.ret>r.hold).length;
-    const pfGood=results.filter(r=>r.test.pf>1).length;
-    const trades=results.reduce((s,r)=>s+r.test.trades,0);
-    const worstDD=Math.max(...results.map(r=>r.test.dd));
-    const finitePF=results.map(r=>r.test.pf).filter(Number.isFinite);
-    const avgPF=finitePF.length?finitePF.reduce((a,b)=>a+b,0)/finitePF.length:Infinity;
-    const consistency=(positive/results.length*50)+(beat/results.length*30)+(pfGood/results.length*20);
-    const avgRet=returns.reduce((a,b)=>a+b,0)/returns.length;
-    const medRet=median(returns);
-    const sampleOK=results.length>=4 && trades>=20;
-    return {cfg,windows:results.length,positive,beat,trades,worstDD,avgPF,consistency,avgRet,medRet,sampleOK};
-  }).sort((a,b)=>{
-    if(a.sampleOK!==b.sampleOK)return b.sampleOK-a.sampleOK;
-    if(a.consistency!==b.consistency)return b.consistency-a.consistency;
-    return b.avgRet-a.avgRet;
-  });
+    const res=windows.map(w=>({r:simulateRange(ohlc,ind,cfg,w.s,w.e),hold:w.hold}));
+    const rets=res.map(x=>x.r.ret),positive=res.filter(x=>x.r.ret>0).length,beat=res.filter(x=>x.r.ret>x.hold).length,pfgood=res.filter(x=>x.r.pf>1).length;
+    const trades=res.reduce((a,x)=>a+x.r.trades,0),worstDD=Math.max(...res.map(x=>x.r.dd));
+    const pfs=res.map(x=>x.r.pf).filter(Number.isFinite),avgPF=pfs.length?pfs.reduce((a,b)=>a+b,0)/pfs.length:Infinity;
+    const consistency=positive/res.length*50+beat/res.length*30+pfgood/res.length*20;
+    return {cfg,n:res.length,avg:rets.reduce((a,b)=>a+b,0)/rets.length,med:median(rets),positive,beat,worstDD,avgPF,trades,consistency,sample:trades>=20};
+  }).sort((a,b)=>a.sample!==b.sample?b.sample-a.sample:b.consistency-a.consistency||b.avg-a.avg);
 
-  document.getElementById('lab').innerHTML=rows.map((x,i)=>{
-    const pf=x.avgPF===Infinity?'∞':x.avgPF.toFixed(2);
-    const posPct=(x.positive/x.windows*100).toFixed(0);
-    const beatPct=(x.beat/x.windows*100).toFixed(0);
-    return `<tr>
-      <td><span class="rank">${i+1}</span></td>
-      <td>${x.cfg.family}</td>
-      <td style="text-align:left">${x.cfg.label}</td>
-      <td>${x.windows}</td>
-      <td class="${x.consistency>=60?'good':x.consistency>=40?'neutral':'bad'}"><b>${x.consistency.toFixed(0)}/100</b></td>
-      <td class="${x.avgRet>=0?'good':'bad'}">${x.avgRet.toFixed(2)}%</td>
-      <td class="${x.medRet>=0?'good':'bad'}">${x.medRet.toFixed(2)}%</td>
-      <td>${x.positive}/${x.windows} (${posPct}%)</td>
-      <td>${x.beat}/${x.windows} (${beatPct}%)</td>
-      <td class="${x.worstDD<=8?'good':x.worstDD<=15?'neutral':'bad'}">${x.worstDD.toFixed(2)}%</td>
-      <td>${pf}</td>
-      <td>${x.trades}</td>
-      <td class="${x.sampleOK?'good':'neutral'}">${x.sampleOK?'OK':'LOW SAMPLE'}</td>
-    </tr>`;
-  }).join('');
+  document.getElementById('lab').innerHTML=rows.map((x,i)=>`<tr>
+    <td><span class="rank">${i+1}</span></td>
+    <td>${x.cfg.family}</td>
+    <td style="text-align:left">${x.cfg.label}</td>
+    <td><span class="pill">${x.cfg.regime}</span></td>
+    <td>${x.n}</td>
+    <td class="${x.consistency>=60?'good':x.consistency>=40?'neutral':'bad'}"><b>${x.consistency.toFixed(0)}/100</b></td>
+    <td class="${x.avg>=0?'good':'bad'}">${x.avg.toFixed(2)}%</td>
+    <td class="${x.med>=0?'good':'bad'}">${x.med.toFixed(2)}%</td>
+    <td>${x.positive}/${x.n}</td>
+    <td>${x.beat}/${x.n}</td>
+    <td class="${x.worstDD<=8?'good':x.worstDD<=15?'neutral':'bad'}">${x.worstDD.toFixed(2)}%</td>
+    <td>${x.avgPF===Infinity?'∞':x.avgPF.toFixed(2)}</td>
+    <td>${x.trades}</td>
+    <td class="${x.sample?'good':'neutral'}">${x.sample?'OK':'LOW SAMPLE'}</td>
+  </tr>`).join('');
 
-  document.getElementById('points').textContent=marketData.length;
-  document.getElementById('trainPts').textContent=trainDays+' days/window';
-  document.getElementById('testPts').textContent=testDays+' days × '+windows.length;
-  document.getElementById('price').textContent=peso(marketData[marketData.length-1].close);
-  setStatus('Rolling walk-forward complete: '+windows.length+' separate '+testDays+'-day OOS windows.');
+  document.getElementById('status').textContent='V7 regime lab complete across '+windows.length+' rolling windows.';
 }
 </script>
 </body></html>
