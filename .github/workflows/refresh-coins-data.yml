@@ -1,0 +1,44 @@
+name: Refresh Coins.ph BTC Data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/refresh-coins-data.yml"
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch Coins.ph candles
+        shell: bash
+        run: |
+          mkdir -p trading-bot/data
+          curl --fail --silent --show-error             "https://api.pro.coins.ph/openapi/quote/v1/klines?symbol=BTCPHP&interval=15m&limit=1000"             -o trading-bot/data/btcphp-15m.json
+          python - <<'PY'
+          import json
+          p="trading-bot/data/btcphp-15m.json"
+          data=json.load(open(p,encoding="utf-8"))
+          if not isinstance(data,list) or len(data)<100:
+              raise SystemExit("Coins.ph returned invalid or insufficient kline data")
+          print("Fetched",len(data),"candles")
+          PY
+
+      - name: Commit refreshed data
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trading-bot/data/btcphp-15m.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Refresh Coins.ph BTC data [skip ci]"
+          git push
