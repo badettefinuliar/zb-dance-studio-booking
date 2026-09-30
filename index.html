@@ -38,8 +38,8 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
     <div class="grid">
       <div><label for="name">Customer name</label><input id="name" placeholder="Your name"></div>
       <div><label for="contact">Contact number</label><input id="contact" placeholder="09xx xxx xxxx"></div>
-      <div><label for="date">Booking date</label><input id="date" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" autocomplete="off"></div>
-      <div><label for="start">Start time</label><input id="start" type="time" value="08:00"></div>
+      <div><label for="date">Booking date</label><input id="date" type="tel" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" autocomplete="off"></div>
+      <div><label for="start">Start time</label><input id="start" type="tel" inputmode="numeric" placeholder="HH:MM" maxlength="5" value="08:00" autocomplete="off"></div>
       <div><label for="hours">Number of hours</label><input id="hours" type="number" min="1" max="12" step="1" value="1"></div>
       <div><label for="purpose">Purpose</label><select id="purpose"><option>Dance practice</option><option>Dance class</option><option>School activity practice</option><option>Training</option><option>Master class</option><option>Other</option></select></div>
     </div>
@@ -113,6 +113,29 @@ let bookingHoldCreated = false;
 let currentBookingId = "";
 
 function peso(n){return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',minimumFractionDigits:2}).format(n).replace('PHP','₱')}
+function formatDateDigits(value){
+  const d=String(value||'').replace(/\D/g,'').slice(0,8);
+  if(d.length<=4) return d;
+  if(d.length<=6) return d.slice(0,4)+'-'+d.slice(4);
+  return d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6);
+}
+function formatTimeDigits(value){
+  const d=String(value||'').replace(/\D/g,'').slice(0,4);
+  if(d.length===0) return '';
+  if(d.length<=2) return d;
+  return d.slice(0,2)+':'+d.slice(2);
+}
+function validDateValue(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const p=value.split('-').map(Number);
+  const dt=new Date(p[0],p[1]-1,p[2]);
+  return dt.getFullYear()===p[0] && dt.getMonth()===p[1]-1 && dt.getDate()===p[2];
+}
+function validTimeValue(value){
+  if(!/^\d{2}:\d{2}$/.test(value)) return false;
+  const p=value.split(':').map(Number);
+  return p[0]>=0 && p[0]<=23 && p[1]>=0 && p[1]<=59;
+}
 function normalizeTimeValue(value,fallback){
   if(typeof value==='string' && /^\d{2}:\d{2}$/.test(value)) return value;
   return fallback;
@@ -177,7 +200,9 @@ async function checkAvailability(){
   const end=String(Math.floor(calc.endMin/60)).padStart(2,'0')+':'+String(calc.endMin%60).padStart(2,'0');
   const box=document.getElementById('availability');
 
-  if(!date){box.className='availability no';box.textContent='Please choose a booking date first.';return;}
+  if(!date){box.className='availability no';box.textContent='Please enter a booking date first.';return;}
+  if(!validDateValue(date)){box.className='availability no';box.textContent='Please enter a complete date, for example 2026-10-05.';return;}
+  if(!validTimeValue(start)){box.className='availability no';box.textContent='Please enter a valid start time, for example 08:00 or 17:30.';return;}
   const today=new Date();today.setHours(0,0,0,0);
   const chosen=new Date(date+'T00:00:00');
   if(chosen<today){box.className='availability no';box.textContent='That date has already passed. Please choose another date.';return;}
@@ -317,7 +342,18 @@ function copySummary(){makeSummary();if(availabilityApproved)copyText(document.g
 function copyGCash(){copyText(GCASH,'GCash number copied.')}
 function copyAmount(){const c=calculate();copyText(c.reservation.toFixed(2),'Reservation amount copied.')}
 
-['date','start','hours'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{calculate();resetAvailability()}));
+document.getElementById('date').addEventListener('input',e=>{
+  const formatted=formatDateDigits(e.target.value);
+  if(e.target.value!==formatted)e.target.value=formatted;
+  resetAvailability();
+});
+document.getElementById('start').addEventListener('input',e=>{
+  const formatted=formatTimeDigits(e.target.value);
+  if(e.target.value!==formatted)e.target.value=formatted;
+  calculate();
+  resetAvailability();
+});
+document.getElementById('hours').addEventListener('input',()=>{calculate();resetAvailability()});
 document.getElementById('proof').addEventListener('change',e=>{const file=e.target.files[0];const img=document.getElementById('preview');if(!file){img.style.display='none';img.removeAttribute('src');return}img.src=URL.createObjectURL(file);img.style.display='block'});
 async function loadSettings(){
   if(!API_URL){updateBranding();updateRateDisplay();calculate();return;}
