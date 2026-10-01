@@ -234,8 +234,8 @@ async function checkAvailability(){
 
   try{
     if(API_URL){
-      const url=API_URL+'?action=check&date='+encodeURIComponent(date)+'&start='+encodeURIComponent(start)+'&end='+encodeURIComponent(end);
-      const res=await fetch(url);
+      const url=API_URL+'?action=check&date='+encodeURIComponent(date)+'&start='+encodeURIComponent(start)+'&end='+encodeURIComponent(end)+'&_='+Date.now();
+      const res=await fetch(url,{cache:'no-store'});
       const data=await res.json();
       if(!data.ok) throw new Error(data.error||'Availability check failed.');
       if(data.settings){SETTINGS=data.settings;
@@ -377,7 +377,7 @@ document.getElementById('proof').addEventListener('change',e=>{const file=e.targ
 async function loadSettings(){
   if(!API_URL){updateBranding();updateRateDisplay();calculate();return;}
   try{
-    const res=await fetch(API_URL+'?action=settings');
+    const res=await fetch(API_URL+'?action=settings&_='+Date.now(),{cache:'no-store'});
     const data=await res.json();
     if(data.ok && data.settings){
       SETTINGS=data.settings;
