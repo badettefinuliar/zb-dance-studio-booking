@@ -23,6 +23,7 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
 .payment-box h3{margin:0 0 8px;font-size:18px}.payment-box p{margin:5px 0;color:var(--muted)}.gcash-number{font-size:23px;font-weight:800;letter-spacing:.6px;color:var(--accent2);margin:5px 0 10px}
 .proof{margin-top:14px;padding-top:14px;border-top:1px solid #2b3b54}.proof input[type=file]{padding:10px;background:#0b1220}.proof-note{font-size:12px;color:var(--muted);margin-top:7px}.preview{margin-top:10px;max-width:180px;border-radius:12px;display:none;border:1px solid #3a4d69}
 .summary{white-space:pre-wrap;color:#e2e8f0}.status{margin-top:10px;font-size:13px;color:var(--ok);min-height:18px}.creator-credit{text-align:center;color:#718096;font-size:11px;margin-top:18px;letter-spacing:.2px}.footer-note{color:var(--muted);font-size:12px;margin-top:14px;line-height:1.5}.hidden{display:none}
+.admin-wrap{margin-top:18px;padding-top:14px;border-top:1px solid #2b3b54}.admin-panel{display:none;margin-top:12px;padding:15px;background:#0b1220;border:1px solid #31415a;border-radius:14px}.admin-panel.open{display:block}.admin-login{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.admin-status{margin:10px 0 0;font-size:13px;color:var(--muted);min-height:18px}.admin-list{display:grid;gap:10px;margin-top:12px}.admin-booking{border:1px solid #31415a;border-radius:12px;padding:12px;background:#121a2b}.admin-booking strong{display:block;margin-bottom:5px}.admin-meta{font-size:13px;color:var(--muted);line-height:1.5}.admin-confirm{margin-top:10px;width:100%;background:var(--ok);color:#06140b}.admin-confirm:disabled{opacity:.6;cursor:not-allowed}@media(max-width:520px){.admin-login{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -84,7 +85,24 @@ button{border:0;border-radius:11px;padding:12px 15px;font-size:14px;font-weight:
 
     <div id="status" class="status"></div>
     <div id="summary" class="summary">Your booking summary will appear here after an available slot is checked.</div>
-    <div class="footer-note">When automatic booking is connected, available slots can be held temporarily. After payment is verified, the business changes the booking status to CONFIRMED in the private Google Sheet. Expired unpaid holds automatically stop blocking the schedule.</div>
+    <div class="footer-note">Available slots can be held temporarily. After payment is verified, the studio can confirm the booking from the private Admin panel below. Expired unpaid holds automatically stop blocking the schedule.</div>
+
+    <div class="admin-wrap">
+      <button id="adminToggle" class="ghost" type="button">Studio Admin</button>
+      <div id="adminPanel" class="admin-panel" aria-hidden="true">
+        <h2 class="section-title">Studio Admin</h2>
+        <div class="admin-login">
+          <div>
+            <label for="adminPin">Admin PIN</label>
+            <input id="adminPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Enter admin PIN">
+          </div>
+          <button id="loadPendingButton" class="secondary" type="button">Show Pending</button>
+        </div>
+        <div id="adminStatus" class="admin-status"></div>
+        <div id="adminList" class="admin-list"></div>
+      </div>
+    </div>
+
     <div class="creator-credit" id="creatorCredit">Powered by Badette AI Systems</div>
   </div>
 </div>
@@ -362,6 +380,134 @@ async function copyText(text,success){try{await navigator.clipboard.writeText(te
 function copySummary(){makeSummary();if(availabilityApproved)copyText(document.getElementById('summary').textContent,'Booking summary copied.')}
 function copyGCash(){copyText(GCASH,'GCash number copied.')}
 function copyAmount(){const c=calculate();copyText(c.reservation.toFixed(2),'Reservation amount copied.')}
+
+async function postApi_(payload){
+  const res=await fetch(API_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload),
+    cache:'no-store'
+  });
+  return res.json();
+}
+
+function setAdminStatus_(message,isError){
+  const el=document.getElementById('adminStatus');
+  el.textContent=message||'';
+  el.style.color=isError?'var(--danger)':'var(--muted)';
+}
+
+function renderPending_(bookings){
+  const list=document.getElementById('adminList');
+  list.innerHTML='';
+
+  if(!bookings || !bookings.length){
+    const empty=document.createElement('div');
+    empty.className='admin-booking';
+    empty.textContent='No active pending bookings right now.';
+    list.appendChild(empty);
+    return;
+  }
+
+  bookings.forEach(b=>{
+    const card=document.createElement('div');
+    card.className='admin-booking';
+
+    const name=document.createElement('strong');
+    name.textContent=b.name||'Unnamed customer';
+
+    const meta=document.createElement('div');
+    meta.className='admin-meta';
+    meta.textContent=
+      'Booking ID: '+(b.bookingId||'')+
+      '\nDate: '+(b.date||'')+
+      '\nTime: '+(b.start||'')+'–'+(b.end||'')+
+      '\nContact: '+(b.contact||'')+
+      '\nPurpose: '+(b.purpose||'')+
+      '\nReservation: '+peso(Number(b.reservation||0));
+    meta.style.whiteSpace='pre-line';
+
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='admin-confirm';
+    btn.textContent='CONFIRM PAYMENT';
+    btn.addEventListener('click',()=>confirmAdminBooking_(b.bookingId,btn));
+
+    card.appendChild(name);
+    card.appendChild(meta);
+    card.appendChild(btn);
+    list.appendChild(card);
+  });
+}
+
+async function loadPendingBookings_(){
+  const pin=document.getElementById('adminPin').value.trim();
+  if(!pin){setAdminStatus_('Enter your Admin PIN first.',true);return;}
+
+  const btn=document.getElementById('loadPendingButton');
+  btn.disabled=true;
+  setAdminStatus_('Loading pending bookings...',false);
+
+  try{
+    const data=await postApi_({action:'adminlist',pin:pin});
+    if(!data.ok){
+      renderPending_([]);
+      setAdminStatus_(data.error||'Could not load bookings.',true);
+      return;
+    }
+    renderPending_(data.bookings||[]);
+    setAdminStatus_((data.bookings||[]).length+' active pending booking(s).',false);
+  }catch(err){
+    renderPending_([]);
+    setAdminStatus_('Could not connect to the booking backend.',true);
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function confirmAdminBooking_(bookingId,button){
+  const pin=document.getElementById('adminPin').value.trim();
+  if(!pin){setAdminStatus_('Enter your Admin PIN first.',true);return;}
+
+  button.disabled=true;
+  button.textContent='Confirming...';
+
+  try{
+    const data=await postApi_({
+      action:'adminconfirm',
+      pin:pin,
+      bookingId:bookingId
+    });
+
+    if(!data.ok){
+      setAdminStatus_(data.error||'Could not confirm booking.',true);
+      button.disabled=false;
+      button.textContent='CONFIRM PAYMENT';
+      return;
+    }
+
+    setAdminStatus_('✓ Booking confirmed: '+bookingId,false);
+    await loadPendingBookings_();
+  }catch(err){
+    setAdminStatus_('Could not connect to the booking backend.',true);
+    button.disabled=false;
+    button.textContent='CONFIRM PAYMENT';
+  }
+}
+
+document.getElementById('adminToggle').addEventListener('click',()=>{
+  const panel=document.getElementById('adminPanel');
+  const open=!panel.classList.contains('open');
+  panel.classList.toggle('open',open);
+  panel.setAttribute('aria-hidden',String(!open));
+  document.getElementById('adminToggle').textContent=open?'Hide Studio Admin':'Studio Admin';
+  if(open) document.getElementById('adminPin').focus();
+});
+
+document.getElementById('loadPendingButton').addEventListener('click',loadPendingBookings_);
+document.getElementById('adminPin').addEventListener('keydown',e=>{
+  if(e.key==='Enter') loadPendingBookings_();
+});
 
 document.getElementById('date').addEventListener('input',e=>{
   const formatted=formatDateDigits(e.target.value);
