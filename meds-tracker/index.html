@@ -72,6 +72,14 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
   </section>
 
   <section id="settingsPanel" class="panel">
+    <div class="card">
+      <div class="alarm-row">
+        <div><h3 style="margin:0">Daily Maintenance Mode</h3><div class="note">When ON, every saved medicine repeats every day, Monday–Sunday.</div></div>
+        <span id="dailyModeState" class="alarm-state on">ON</span>
+      </div>
+      <button id="dailyModeButton" class="primary" style="width:100%;margin-top:12px" onclick="toggleDailyMode()">Daily mode is ON</button>
+      <div class="note" style="margin-top:8px">Turn this OFF only if you need medicines that are taken on selected days only.</div>
+    </div>
     <div class="card alarm-box">
       <div class="alarm-row">
         <div><h3 style="margin:0">Medication alarms</h3><div class="note">Sound + vibration + notification while the app is active.</div></div>
@@ -166,18 +174,29 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
 const KEY='mymeds_v1';
 const ALARM_FIRED_KEY='mymeds_alarm_fired_v1';
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-let state={profile:{name:''},meds:[],logs:[],settings:{alarmsEnabled:false}};
+let state={profile:{name:''},meds:[],logs:[],settings:{alarmsEnabled:false,dailyMaintenance:true}};
 let editId=null,tempTimes=[],tempDays=[0,1,2,3,4,5,6];
 let alarmAudioCtx=null,currentAlarm=null,snoozedUntil={};
 
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&x.profile&&Array.isArray(x.meds)&&Array.isArray(x.logs))state=x}catch(e){}if(!state.settings)state.settings={alarmsEnabled:false};if(typeof state.settings.alarmsEnabled!=='boolean')state.settings.alarmsEnabled=false}
+function load(){
+ try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&x.profile&&Array.isArray(x.meds)&&Array.isArray(x.logs))state=x}catch(e){}
+ if(!state.settings)state.settings={alarmsEnabled:false,dailyMaintenance:true};
+ if(typeof state.settings.alarmsEnabled!=='boolean')state.settings.alarmsEnabled=false;
+ if(typeof state.settings.dailyMaintenance!=='boolean')state.settings.dailyMaintenance=true;
+}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function localDate(d){d=d||new Date();const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day}
 function fmtDateLong(){return new Intl.DateTimeFormat(undefined,{weekday:'short',month:'short',day:'numeric'}).format(new Date())}
 function fmtTime(t){const p=t.split(':').map(Number),d=new Date();d.setHours(p[0],p[1],0,0);return new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(d)}
 function toast(msg){const x=document.getElementById('toast');x.textContent=msg;x.classList.add('show');setTimeout(function(){x.classList.remove('show')},1800)}
-function activeToday(med){const td=localDate(),dow=new Date().getDay();if(med.startDate&&td<med.startDate)return false;if(med.endDate&&td>med.endDate)return false;return (med.days||[0,1,2,3,4,5,6]).includes(dow)}
+function activeToday(med){
+ const td=localDate(),dow=new Date().getDay();
+ if(med.startDate&&td<med.startDate)return false;
+ if(med.endDate&&td>med.endDate)return false;
+ if(state.settings&&state.settings.dailyMaintenance)return true;
+ return (med.days||[0,1,2,3,4,5,6]).includes(dow);
+}
 function logFor(medId,date,time){return state.logs.find(function(l){return l.medId===medId&&l.date===date&&l.time===time})}
 function scheduleRows(){
  const rows=[],date=localDate();
@@ -192,7 +211,7 @@ function render(){
  const n=state.profile.name||'';
  document.getElementById('hello').textContent=n?'For '+n:'Personal medication tracker';
  document.getElementById('profileName').value=n;
- renderToday();renderMeds();renderHistory();renderAlarmSettings();
+ renderToday();renderMeds();renderHistory();renderAlarmSettings();renderDailyMode();
 }
 function renderToday(){
  const rows=scheduleRows(),now=minutesNow(),taken=rows.filter(function(r){return r.log&&r.log.status==='taken'}).length;
@@ -212,7 +231,11 @@ function renderToday(){
    document.getElementById('nextDose').textContent=rows.length?'All scheduled doses are recorded for today.':'Add your first medicine to get started.';
  }
  const box=document.getElementById('todayList');box.innerHTML='';
- if(!rows.length){box.innerHTML='<div class="empty"><div class="emoji">🗓️</div>No medicines scheduled for today.</div>';return}
+ if(!rows.length){
+   const total=state.meds.length;
+   box.innerHTML='<div class="empty"><div class="emoji">🗓️</div>'+(total?'You have '+total+' saved medicine(s), but none has an active schedule for today. Check Start/End dates in Medicines.':'No medicines scheduled for today.')+'</div>';
+   return
+ }
  const orderedRows=rows.slice().sort(function(a,b){
    const aRank=a.log?2:(mins(a.time)<now?0:1);
    const bRank=b.log?2:(mins(b.time)<now?0:1);
@@ -285,6 +308,18 @@ function saveMedicine(){
 function editMedicine(id){const m=state.meds.find(function(x){return x.id===id});if(!m)return;editId=id;tempTimes=(m.times||[]).slice();tempDays=(m.days||[]).slice();document.getElementById('formTitle').textContent='Edit medicine';document.getElementById('medName').value=m.name||'';document.getElementById('medDose').value=m.dose||'';document.getElementById('medNotes').value=m.notes||'';document.getElementById('startDate').value=m.startDate||'';document.getElementById('endDate').value=m.endDate||'';document.getElementById('qty').value=m.qty===''?'':m.qty;document.getElementById('perDose').value=m.perDose||1;document.getElementById('threshold').value=m.threshold||0;renderDays();renderTimes();showPanel('edit')}
 function deleteMedicine(id){if(!confirm('Delete this medicine? Its existing history will stay.'))return;state.meds=state.meds.filter(function(m){return m.id!==id});save();render();toast('Medicine deleted')}
 function saveProfile(){state.profile.name=document.getElementById('profileName').value.trim();save();render();toast('Profile saved')}
+
+function renderDailyMode(){
+ const enabled=!!(state.settings&&state.settings.dailyMaintenance);
+ const badge=document.getElementById('dailyModeState'),btn=document.getElementById('dailyModeButton');
+ if(!badge||!btn)return;
+ badge.textContent=enabled?'ON':'OFF';badge.classList.toggle('on',enabled);
+ btn.textContent=enabled?'Daily mode is ON':'Daily mode is OFF';
+}
+function toggleDailyMode(){
+ state.settings.dailyMaintenance=!state.settings.dailyMaintenance;
+ save();render();toast(state.settings.dailyMaintenance?'All medicines will repeat every day':'Selected-day schedules restored');
+}
 
 function renderAlarmSettings(){
  const enabled=!!(state.settings&&state.settings.alarmsEnabled);
