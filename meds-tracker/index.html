@@ -105,7 +105,13 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
       <label>Dose label</label><input id="medDose" placeholder="e.g. 1 tablet / 5 mL">
       <label>Notes / instructions</label><textarea id="medNotes" rows="2" placeholder="e.g. with food — copy what your prescriber told you"></textarea>
 
-      <label>Schedule days</label><div class="days" id="dayPicker"></div>
+      <label>Schedule days</label>
+      <div class="note" style="margin-bottom:8px">Saved medicines repeat automatically. Choose <strong>Every day</strong> for Monday–Sunday.</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button type="button" class="small-btn" onclick="setEveryDay()">Every day (Mon–Sun)</button>
+        <button type="button" class="small-btn" onclick="clearDays()">Clear days</button>
+      </div>
+      <div class="days" id="dayPicker"></div>
 
       <label>Times</label>
       <div class="time-builder"><div><input id="timeInput" type="time" value="08:00"></div><button class="primary" onclick="addTime()">Add time</button></div>
@@ -263,8 +269,10 @@ function showPanel(name){
  const p=document.getElementById(name+'Panel');if(p)p.classList.add('active');const t=document.querySelector('.tab[data-panel="'+name+'"]');if(t)t.classList.add('active');
  if(name!=='edit')render();
 }
-function goAdd(){editId=null;tempTimes=[];tempDays=[0,1,2,3,4,5,6];document.getElementById('formTitle').textContent='Add medicine';clearForm();renderDays();renderTimes();showPanel('edit')}
+function goAdd(){editId=null;tempTimes=[];tempDays=[0,1,2,3,4,5,6];document.getElementById('formTitle').textContent='Add medicine';clearForm();renderDays();renderTimes();showPanel('edit');toast('Default schedule: Every day (Mon–Sun)')}
 function clearForm(){['medName','medDose','medNotes','endDate','qty'].forEach(function(id){document.getElementById(id).value=''});document.getElementById('timeInput').value='08:00';document.getElementById('startDate').value=localDate();document.getElementById('perDose').value='1';document.getElementById('threshold').value='5'}
+function setEveryDay(){tempDays=[0,1,2,3,4,5,6];renderDays()}
+function clearDays(){tempDays=[];renderDays()}
 function renderDays(){const b=document.getElementById('dayPicker');b.innerHTML='';DAYS.forEach(function(n,i){const x=document.createElement('button');x.type='button';x.className='day '+(tempDays.includes(i)?'on':'');x.textContent=n;x.onclick=function(){if(tempDays.includes(i))tempDays=tempDays.filter(function(d){return d!==i});else tempDays.push(i);renderDays()};b.appendChild(x)})}
 function addTime(){const t=document.getElementById('timeInput').value;if(t&&!tempTimes.includes(t)){tempTimes.push(t);tempTimes.sort();renderTimes()}}
 function renderTimes(){const b=document.getElementById('timeChips');b.innerHTML='';tempTimes.forEach(function(t){const x=document.createElement('span');x.className='chip';x.innerHTML=fmtTime(t)+' <button type="button">×</button>';x.querySelector('button').onclick=function(){tempTimes=tempTimes.filter(function(z){return z!==t});renderTimes()};b.appendChild(x)})}
