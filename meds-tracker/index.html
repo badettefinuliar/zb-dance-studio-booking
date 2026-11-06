@@ -164,7 +164,7 @@ function render(){
 function renderToday(){
  const rows=scheduleRows(),now=minutesNow(),taken=rows.filter(function(r){return r.log&&r.log.status==='taken'}).length;
  const overdue=rows.filter(function(r){return !r.log&&mins(r.time)<now}).length;
- const remaining=rows.length-taken;
+ const remaining=rows.filter(function(r){return !r.log}).length;
  document.getElementById('progressText').textContent=taken+' of '+rows.length+' taken';
  document.getElementById('progressBar').style.width=(rows.length?Math.round(taken/rows.length*100):0)+'%';
  document.getElementById('statDue').textContent=remaining;document.getElementById('statTaken').textContent=taken;document.getElementById('statOverdue').textContent=overdue;
