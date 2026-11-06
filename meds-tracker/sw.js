@@ -1,4 +1,4 @@
-const CACHE='mymeds-v3';
+const CACHE='mymeds-v4';
 const ASSETS=['./','index.html','manifest.webmanifest','icon.svg'];
 
 self.addEventListener('install',event=>{
