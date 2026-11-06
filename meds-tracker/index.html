@@ -235,7 +235,8 @@ function renderMeds(){
  if(!state.meds.length){box.innerHTML='<div class="empty"><div class="emoji">💊</div>No medicines yet.<br><button class="primary" style="margin-top:12px" onclick="goAdd()">Add your first medicine</button></div>';return}
  state.meds.forEach(function(m){
   const d=document.createElement('div');d.className='med-manage';
-  d.innerHTML='<div><strong>'+escapeHtml(m.name)+'</strong><small>'+escapeHtml(m.dose||'No dose label')+' • '+(m.times||[]).map(fmtTime).join(', ')+'</small></div><div class="right"></div>';
+  const dayText=(m.days||[0,1,2,3,4,5,6]).length===7?'Every day':(m.days||[]).map(function(i){return DAYS[i]}).join(', ');
+  d.innerHTML='<div><strong>'+escapeHtml(m.name)+'</strong><small>'+escapeHtml(m.dose||'No dose label')+'<br>'+escapeHtml(dayText)+' • '+(m.times||[]).map(fmtTime).join(', ')+'</small></div><div class="right"></div>';
   const r=d.querySelector('.right');const e=document.createElement('button');e.textContent='Edit';e.onclick=function(){editMedicine(m.id)};const del=document.createElement('button');del.textContent='Delete';del.onclick=function(){deleteMedicine(m.id)};r.appendChild(e);r.appendChild(del);box.appendChild(d);
  });
 }
