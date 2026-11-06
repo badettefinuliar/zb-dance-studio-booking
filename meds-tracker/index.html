@@ -48,7 +48,7 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
       <h2 id="progressText">0 of 0 taken</h2>
       <p id="nextDose">Add your first medicine to get started.</p>
       <div class="progress"><div id="progressBar" style="width:0%"></div></div>
-      <div class="stats"><div class="stat"><b id="statDue">0</b><span>Remaining</span></div><div class="stat"><b id="statTaken">0</b><span>Taken</span></div><div class="stat"><b id="statOverdue">0</b><span>Overdue</span></div></div>
+      <div class="stats"><div class="stat"><b id="statScheduled">0</b><span>Scheduled</span></div><div class="stat"><b id="statTaken">0</b><span>Taken</span></div><div class="stat"><b id="statOverdue">0</b><span>Overdue</span></div></div>
     </div>
     <div class="card">
       <div class="section-head"><h3>Today's medicines</h3><button class="small-btn" onclick="goAdd()">+ Add</button></div>
@@ -194,12 +194,26 @@ function renderToday(){
  const remaining=rows.filter(function(r){return !r.log}).length;
  document.getElementById('progressText').textContent=taken+' of '+rows.length+' taken';
  document.getElementById('progressBar').style.width=(rows.length?Math.round(taken/rows.length*100):0)+'%';
- document.getElementById('statDue').textContent=remaining;document.getElementById('statTaken').textContent=taken;document.getElementById('statOverdue').textContent=overdue;
- const next=rows.find(function(r){return !r.log&&mins(r.time)>=now})||rows.find(function(r){return !r.log});
- document.getElementById('nextDose').textContent=next?'Next: '+next.med.name+' at '+fmtTime(next.time):rows.length?'All scheduled doses are recorded for today.':'Add your first medicine to get started.';
+ document.getElementById('statScheduled').textContent=rows.length;document.getElementById('statTaken').textContent=taken;document.getElementById('statOverdue').textContent=overdue;
+ const overdueRows=rows.filter(function(r){return !r.log&&mins(r.time)<now});
+ const nextFuture=rows.find(function(r){return !r.log&&mins(r.time)>=now});
+ if(overdueRows.length){
+   const first=overdueRows[0];
+   document.getElementById('nextDose').textContent='⚠ '+overdueRows.length+' overdue — '+first.med.name+' was due at '+fmtTime(first.time);
+ }else if(nextFuture){
+   document.getElementById('nextDose').textContent='Next: '+nextFuture.med.name+' at '+fmtTime(nextFuture.time);
+ }else{
+   document.getElementById('nextDose').textContent=rows.length?'All scheduled doses are recorded for today.':'Add your first medicine to get started.';
+ }
  const box=document.getElementById('todayList');box.innerHTML='';
  if(!rows.length){box.innerHTML='<div class="empty"><div class="emoji">🗓️</div>No medicines scheduled for today.</div>';return}
- rows.forEach(function(r){
+ const orderedRows=rows.slice().sort(function(a,b){
+   const aRank=a.log?2:(mins(a.time)<now?0:1);
+   const bRank=b.log?2:(mins(b.time)<now?0:1);
+   if(aRank!==bRank)return aRank-bRank;
+   return a.time.localeCompare(b.time);
+ });
+ orderedRows.forEach(function(r){
   const div=document.createElement('div');div.className='med-row';
   let status='Upcoming',cls='upcoming';
   if(r.log){status=r.log.status==='taken'?'Taken':'Missed';cls=r.log.status==='taken'?'taken':'missed'}
