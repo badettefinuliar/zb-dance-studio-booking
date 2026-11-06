@@ -31,6 +31,7 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
 .notice{background:#fff9e8;border:1px solid #f3e2a9;border-radius:14px;padding:11px;font-size:12px;color:#735b11;line-height:1.45;margin-top:12px}
 .setup{position:fixed;inset:0;background:rgba(25,28,43,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}.setup.show{display:flex}.setup-card{width:min(520px,100%);background:white;border-radius:24px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.2)}.setup-card h2{margin:0 0 4px}.setup-card p{margin:0;color:var(--muted);font-size:13px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#222938;color:white;padding:10px 14px;border-radius:999px;font-size:12px;opacity:0;pointer-events:none;transition:.2s;z-index:30}.toast.show{opacity:1}
+.alarm-box{background:linear-gradient(135deg,#f0efff,#fafaff);border:1px solid #d9d6ff}.alarm-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.alarm-state{font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eef0f7;color:#626a79}.alarm-state.on{background:#e2f7ec;color:var(--good)}.alarm-modal{position:fixed;inset:0;background:rgba(22,25,40,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:50;backdrop-filter:blur(8px)}.alarm-modal.show{display:flex}.alarm-card{width:min(480px,100%);background:white;border-radius:28px;padding:24px;text-align:center;box-shadow:0 35px 90px rgba(0,0,0,.3);animation:alarmPop .25s ease-out}.alarm-icon{width:78px;height:78px;border-radius:25px;display:grid;place-items:center;background:linear-gradient(135deg,#5b5bd6,#9a75f2);color:white;font-size:38px;margin:0 auto 14px;box-shadow:0 14px 35px rgba(91,91,214,.3)}.alarm-card h2{margin:0;font-size:28px}.alarm-med{font-size:22px;font-weight:900;margin-top:12px;color:var(--primary)}.alarm-dose{color:var(--muted);margin-top:5px}.alarm-time{font-size:13px;font-weight:800;margin-top:12px}.alarm-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}.alarm-actions button{padding:13px;border-radius:14px;font-weight:900;border:0}.snooze{background:#f1f2f7;color:#555e70}.alarm-taken{background:var(--good);color:white}@keyframes alarmPop{from{transform:scale(.92);opacity:.5}to{transform:scale(1);opacity:1}}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.stats{gap:6px}.stat{padding:8px}.app{padding-left:12px;padding-right:12px}}
 </style>
 </head>
@@ -71,6 +72,17 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
   </section>
 
   <section id="settingsPanel" class="panel">
+    <div class="card alarm-box">
+      <div class="alarm-row">
+        <div><h3 style="margin:0">Medication alarms</h3><div class="note">Sound + vibration + notification while the app is active.</div></div>
+        <span id="alarmState" class="alarm-state">OFF</span>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <button id="alarmToggleButton" class="primary" onclick="toggleAlarms()">Enable alarms</button>
+        <button class="small-btn" onclick="testAlarm()">Test alarm</button>
+      </div>
+      <div id="notificationNote" class="note"></div>
+    </div>
     <div class="card">
       <h3 style="margin-top:0">Profile & backup</h3>
       <label>Your name</label><input id="profileName" placeholder="e.g. Badette">
@@ -130,14 +142,29 @@ label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:12p
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="alarm-modal" id="alarmModal">
+  <div class="alarm-card">
+    <div class="alarm-icon">⏰</div>
+    <h2>Medicine time</h2>
+    <div class="alarm-med" id="alarmMedName">Medicine</div>
+    <div class="alarm-dose" id="alarmDose"></div>
+    <div class="alarm-time" id="alarmTime"></div>
+    <div class="alarm-actions">
+      <button class="snooze" onclick="snoozeAlarm()">Snooze 5 min</button>
+      <button class="alarm-taken" onclick="takeFromAlarm()">✓ Taken</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const KEY='mymeds_v1';
+const ALARM_FIRED_KEY='mymeds_alarm_fired_v1';
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-let state={profile:{name:''},meds:[],logs:[]};
+let state={profile:{name:''},meds:[],logs:[],settings:{alarmsEnabled:false}};
 let editId=null,tempTimes=[],tempDays=[0,1,2,3,4,5,6];
+let alarmAudioCtx=null,currentAlarm=null,snoozedUntil={};
 
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&x.profile&&Array.isArray(x.meds)&&Array.isArray(x.logs))state=x}catch(e){}}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&x.profile&&Array.isArray(x.meds)&&Array.isArray(x.logs))state=x}catch(e){}if(!state.settings)state.settings={alarmsEnabled:false};if(typeof state.settings.alarmsEnabled!=='boolean')state.settings.alarmsEnabled=false}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function localDate(d){d=d||new Date();const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day}
@@ -159,7 +186,7 @@ function render(){
  const n=state.profile.name||'';
  document.getElementById('hello').textContent=n?'For '+n:'Personal medication tracker';
  document.getElementById('profileName').value=n;
- renderToday();renderMeds();renderHistory();
+ renderToday();renderMeds();renderHistory();renderAlarmSettings();
 }
 function renderToday(){
  const rows=scheduleRows(),now=minutesNow(),taken=rows.filter(function(r){return r.log&&r.log.status==='taken'}).length;
@@ -206,6 +233,7 @@ function renderHistory(){
 }
 function record(medId,time,status){
  const date=localDate();if(logFor(medId,date,time))return;
+ if(currentAlarm&&currentAlarm.med.id===medId&&currentAlarm.time===time)hideAlarm();
  state.logs.push({id:uid(),medId:medId,date:date,time:time,status:status,loggedAt:new Date().toISOString()});
  if(status==='taken'){const m=state.meds.find(function(x){return x.id===medId});if(m&&m.qty!==''&&m.qty!=null){m.qty=Math.max(0,Number(m.qty)-Number(m.perDose||1))}}
  save();render();toast(status==='taken'?'Recorded as taken':'Recorded as missed');
@@ -234,6 +262,95 @@ function saveMedicine(){
 function editMedicine(id){const m=state.meds.find(function(x){return x.id===id});if(!m)return;editId=id;tempTimes=(m.times||[]).slice();tempDays=(m.days||[]).slice();document.getElementById('formTitle').textContent='Edit medicine';document.getElementById('medName').value=m.name||'';document.getElementById('medDose').value=m.dose||'';document.getElementById('medNotes').value=m.notes||'';document.getElementById('startDate').value=m.startDate||'';document.getElementById('endDate').value=m.endDate||'';document.getElementById('qty').value=m.qty===''?'':m.qty;document.getElementById('perDose').value=m.perDose||1;document.getElementById('threshold').value=m.threshold||0;renderDays();renderTimes();showPanel('edit')}
 function deleteMedicine(id){if(!confirm('Delete this medicine? Its existing history will stay.'))return;state.meds=state.meds.filter(function(m){return m.id!==id});save();render();toast('Medicine deleted')}
 function saveProfile(){state.profile.name=document.getElementById('profileName').value.trim();save();render();toast('Profile saved')}
+
+function renderAlarmSettings(){
+ const enabled=!!(state.settings&&state.settings.alarmsEnabled);
+ const badge=document.getElementById('alarmState'),btn=document.getElementById('alarmToggleButton'),note=document.getElementById('notificationNote');
+ if(!badge||!btn)return;
+ badge.textContent=enabled?'ON':'OFF';badge.classList.toggle('on',enabled);
+ btn.textContent=enabled?'Disable alarms':'Enable alarms';
+ if(!('Notification' in window))note.textContent='Browser notifications are not supported here. Sound/vibration can still work while this app is open.';
+ else if(Notification.permission==='granted')note.textContent='Notifications allowed. Keep the app installed/open for the most reliable web alarms.';
+ else if(Notification.permission==='denied')note.textContent='Notifications are blocked in browser settings. Sound/vibration can still work while the app is open.';
+ else note.textContent='Tap Enable alarms and allow notifications when asked.';
+}
+function getAudioCtx(){
+ if(!alarmAudioCtx){const AC=window.AudioContext||window.webkitAudioContext;if(AC)alarmAudioCtx=new AC()}
+ if(alarmAudioCtx&&alarmAudioCtx.state==='suspended')alarmAudioCtx.resume().catch(function(){});
+ return alarmAudioCtx;
+}
+function playAlarmSound(){
+ const ctx=getAudioCtx();if(!ctx)return;
+ const start=ctx.currentTime+.03;
+ [0,.45,.9].forEach(function(offset){
+  const osc=ctx.createOscillator(),gain=ctx.createGain();
+  osc.type='sine';osc.frequency.setValueAtTime(880,start+offset);
+  gain.gain.setValueAtTime(.0001,start+offset);
+  gain.gain.exponentialRampToValueAtTime(.22,start+offset+.03);
+  gain.gain.exponentialRampToValueAtTime(.0001,start+offset+.32);
+  osc.connect(gain);gain.connect(ctx.destination);osc.start(start+offset);osc.stop(start+offset+.34);
+ });
+ if(navigator.vibrate)navigator.vibrate([350,140,350,140,600]);
+}
+async function toggleAlarms(){
+ state.settings.alarmsEnabled=!state.settings.alarmsEnabled;
+ if(state.settings.alarmsEnabled){
+  getAudioCtx();
+  if('Notification' in window&&Notification.permission==='default'){
+   try{await Notification.requestPermission()}catch(e){}
+  }
+  playAlarmSound();toast('Alarms enabled');
+ }else{hideAlarm();toast('Alarms disabled')}
+ save();renderAlarmSettings();checkAlarms();
+}
+function testAlarm(){
+ getAudioCtx();playAlarmSound();
+ const fake={id:'test',name:'Test medicine',dose:'This is only a test'};
+ showAlarm({med:fake,time:new Date().toTimeString().slice(0,5),test:true});
+}
+function firedMap(){try{return JSON.parse(localStorage.getItem(ALARM_FIRED_KEY)||'{}')}catch(e){return {}}}
+function markFired(key){const map=firedMap();map[key]=Date.now();const today=localDate();Object.keys(map).forEach(function(k){if(!k.startsWith(today+'|'))delete map[k]});localStorage.setItem(ALARM_FIRED_KEY,JSON.stringify(map))}
+function showAlarm(item){
+ currentAlarm=item;
+ document.getElementById('alarmMedName').textContent=item.med.name||'Medicine';
+ document.getElementById('alarmDose').textContent=item.med.dose||'Check your medicine label/instructions.';
+ document.getElementById('alarmTime').textContent='Scheduled for '+fmtTime(item.time);
+ document.getElementById('alarmModal').classList.add('show');
+ playAlarmSound();
+ if(!item.test&&'Notification' in window&&Notification.permission==='granted'){
+  const body=(item.med.dose?item.med.dose+' • ':'')+'Scheduled for '+fmtTime(item.time);
+  if('serviceWorker' in navigator){
+   navigator.serviceWorker.ready.then(function(reg){reg.showNotification('Medicine time: '+item.med.name,{body:body,icon:'icon.svg',badge:'icon.svg',tag:'med-'+item.med.id+'-'+item.time,renotify:true})}).catch(function(){});
+  }else{try{new Notification('Medicine time: '+item.med.name,{body:body})}catch(e){}}
+ }
+}
+function hideAlarm(){document.getElementById('alarmModal').classList.remove('show');currentAlarm=null;if(navigator.vibrate)navigator.vibrate(0)}
+function snoozeAlarm(){
+ if(!currentAlarm)return;
+ if(currentAlarm.test){hideAlarm();toast('Test alarm snoozed');return}
+ const key=localDate()+'|'+currentAlarm.med.id+'|'+currentAlarm.time;
+ snoozedUntil[key]=Date.now()+5*60*1000;hideAlarm();toast('Snoozed for 5 minutes');
+}
+function takeFromAlarm(){
+ if(!currentAlarm)return;
+ if(currentAlarm.test){hideAlarm();toast('Test complete');return}
+ const a=currentAlarm;record(a.med.id,a.time,'taken');
+}
+function checkAlarms(){
+ if(!state.settings||!state.settings.alarmsEnabled||currentAlarm)return;
+ const now=new Date(),nowMin=now.getHours()*60+now.getMinutes(),today=localDate(),fired=firedMap(),rows=scheduleRows();
+ for(const r of rows){
+  if(r.log)continue;
+  const delta=nowMin-mins(r.time);
+  if(delta<0||delta>30)continue;
+  const base=today+'|'+r.med.id+'|'+r.time;
+  if(snoozedUntil[base]&&Date.now()<snoozedUntil[base])continue;
+  const bucket=Math.floor(delta/5);
+  const fireKey=base+'|'+bucket;
+  if(fired[fireKey])continue;
+  markFired(fireKey);showAlarm(r);break;
+ }
+}
 function finishSetup(){const n=document.getElementById('setupName').value.trim();if(!n){toast('Enter a name');return}state.profile.name=n;save();document.getElementById('setup').classList.remove('show');render();goAdd()}
 function clearHistory(){if(!state.logs.length)return;if(confirm('Clear all medication history?')){state.logs=[];save();render();toast('History cleared')}}
 function exportBackup(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-meds-backup-'+localDate()+'.json';a.click();URL.revokeObjectURL(a.href)}
@@ -242,6 +359,9 @@ function escapeHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c
 
 load();if(!state.profile.name)document.getElementById('setup').classList.add('show');render();
 setInterval(renderToday,60000);
+setInterval(checkAlarms,15000);
+setTimeout(checkAlarms,1200);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){renderToday();checkAlarms()}});
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
 </script>
 </body>
